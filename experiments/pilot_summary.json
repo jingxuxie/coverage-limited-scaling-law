@@ -1,0 +1,52 @@
+{
+  "one_hot": {
+    "mode": "one_hot",
+    "s": 1.5,
+    "a": 2.0,
+    "b": 2.0,
+    "eta": 0.125,
+    "m": 200000,
+    "activation_prefactor": 0.3827933839994266,
+    "predicted_optimization_slope": -0.5,
+    "fitted_early_slopes": {
+      "512": -0.45228353930928217,
+      "4096": -0.4719574670733542,
+      "32768": -0.4834511613819631
+    },
+    "predicted_coverage_slope": -0.6666666666666666,
+    "fitted_coverage_slope": -0.6665963135139737,
+    "sharp_predicted_floor_constant": 1.0409753737946008,
+    "measured_floor_ratios": {
+      "512": 1.0398473121888105,
+      "4096": 1.0408342109061028,
+      "32768": 1.0409578998324007
+    },
+    "fixed_compute_degradation": 15.120594983563306
+  },
+  "singleton_filtered": {
+    "mode": "singleton_filtered",
+    "s": 1.5,
+    "a": 2.0,
+    "b": 2.0,
+    "eta": 0.125,
+    "m": 200000,
+    "activation_prefactor": 0.5741900759991398,
+    "all_inactive_probability": 0.16253021750952465,
+    "singleton_rate_prefactor": 0.09332323794395068,
+    "predicted_optimization_slope": -0.5,
+    "fitted_early_slopes": {
+      "512": -0.4125209753969167,
+      "4096": -0.45548171503968093,
+      "32768": -0.475406830723235
+    },
+    "predicted_coverage_slope": -0.6666666666666666,
+    "fitted_coverage_slope": -0.6657367553600024,
+    "sharp_predicted_floor_constant": 2.6674126421921183,
+    "measured_floor_ratios": {
+      "512": 2.6299679344846814,
+      "4096": 2.6626161124078482,
+      "32768": 2.666811233521741
+    },
+    "fixed_compute_degradation": 18.63758023256341
+  }
+}

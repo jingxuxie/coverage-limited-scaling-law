@@ -1,0 +1,101 @@
+\documentclass[letterpaper]{article}
+\usepackage[submission]{../AAAI_AuthorKit27/aaai2027}
+\usepackage{amsmath,amssymb,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newcommand{\E}{\mathbb E}
+\newcommand{\R}{\mathcal R}
+
+\title{When More Epochs Stop Helping: Coverage-Limited Scaling Laws for Sparse Features}
+\author{Anonymous Submission}
+\affiliations{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Repeated passes over a fixed dataset can improve optimization but cannot reveal predictive features absent from the unique examples. We study sparse power-law regression, where feature $j$ activates with probability $p_j\asymp j^{-s}$, has covariance eigenvalue $\lambda_j\asymp j^{-a}$, and carries target energy $g_j\asymp j^{-b}$. We prove an algorithm-independent coverage floor $\sum_jg_j(1-p_j)^n\asymp n^{-(b-1)/s}$. In an exactly solvable one-hot model, a width-$m$ predictor trained for $K$ passes obeys
+\[
+\R(m,n,K)\asymp
+m^{-(b-1)}+(\eta nK)^{-(b-1)/a}+n^{-(b-1)/s}.
+\]
+For genuinely multi-active Bernoulli inputs, label-independent singleton-filtered replay SGD attains the same exponents, proving that the coverage floor is statistically tight. The corresponding saturation epoch is $K_{\rm sat}\asymp\min\{m^a,n^{a/s}\}/(\eta n)$. Establishing the same finite-time upper bound for ordinary SGD using all coactive examples is the central remaining theorem.
+\end{abstract}
+
+\section{Model}
+Let $X_j=q_jZ_jE_j$, with independent $Z_j\sim\mathrm{Bernoulli}(p_j)$ and Rademacher $E_j$. Then $\lambda_j=p_jq_j^2$. Let $\Theta_j=\tau_j\Omega_j$ with independent Rademacher teacher signs, $Y=\langle\Theta,X\rangle$, and $g_j=\lambda_j\tau_j^2$. Assume
+\[
+p_j\asymp j^{-s},\quad \lambda_j\asymp j^{-a},\quad g_j\asymp j^{-b},
+\qquad a\ge s>1,\ b>1.
+\]
+
+\section{Coverage Lower Bound}
+\begin{theorem}[Unseen-feature lower bound]
+For every measurable, possibly randomized learner trained on $n$ unique examples,
+\[
+\E_{\Omega,D_n}\R(\widehat f;\Theta)
+\ge\sum_{j\ge1}g_j(1-p_j)^n
+\asymp n^{-(b-1)/s}.
+\]
+\end{theorem}
+\begin{proof}
+Let $U$ be the coordinates absent from every training input. Conditional on the data and teacher signs outside $U$, the signs inside $U$ remain independent and symmetric because no label depends on them. Averaging squared test error over these hidden signs leaves at least $\sum_{j\in U}\tau_j^2X_j^2$; averaging over the test input and training masks gives the result. The power-law asymptotic follows by splitting at $J=n^{1/s}$ and applying a dyadic-shell estimate.
+\end{proof}
+For exact profiles $p_j=c_pj^{-s}$ and $g_j=c_gj^{-b}$,
+\[
+\sum_jg_j(1-p_j)^n
+\sim\frac{c_g}{s}\Gamma\!\left(\frac{b-1}{s}\right)(c_pn)^{-(b-1)/s}.
+\]
+
+\section{Exact Replay Law}
+In the one-hot benchmark, sample $i$ selects $J_i\sim(p_j)$ and $X_i=E_iq_{J_i}e_{J_i}$. Let $C_j\sim\mathrm{Binomial}(n,p_j)$.
+\begin{proposition}[Exact finite-epoch risk]
+For squared-loss SGD from zero over $K$ repeated passes,
+\[
+\E_D\R_D
+=\sum_{j\le m}g_j[1-p_j+p_j(1-\eta q_j^2)^{2K}]^n
++\sum_{j>m}g_j.
+\]
+\end{proposition}
+\begin{proof}
+The residual in coordinate $j$ is multiplied by $1-\eta q_j^2$ on every occurrence. Coordinate updates commute, giving $KC_j$ multiplications. Take the binomial probability-generating function.
+\end{proof}
+
+\begin{theorem}[Three-frontier law]
+If $\sup_jp_j<1$ and $0<\eta q_j^2\le\rho<1$, then
+\[
+\E_D\R_D\asymp
+\min\{m,(\eta nK)^{1/a},n^{1/s}\}^{1-b}.
+\]
+\end{theorem}
+\begin{proof}[Proof sketch]
+Set $r_j=1-(1-\eta q_j^2)^{2K}$. Then $r_j\asymp\min\{1,K\eta q_j^2\}$ and
+\[
+np_jr_j\asymp\min\{nj^{-s},\eta nKj^{-a}\}.
+\]
+The exact survival factor $(1-p_jr_j)^n$ is exponentially comparable to this quantity. With $J=\min\{m,(\eta nK)^{1/a},n^{1/s}\}$, the represented core is bounded by dyadic shells using $\min\{Aj^{-a},Bj^{-s}\}\ge(J/j)^s$ for $j\le J$; a shell near $J$ or the omitted tail gives the matching lower bound.
+\end{proof}
+
+\section{Multi-Active Achievability}
+For independent Bernoulli masks, let $\pi_0=\prod_k(1-p_k)>0$. The probability of a singleton-$j$ input is
+\[
+\nu_j=\frac{\pi_0p_j}{1-p_j}\asymp p_j.
+\]
+Apply SGD only to singleton examples, using a label-independent support filter.
+\begin{theorem}[Singleton-filtered replay]
+The exact one-hot expression holds with $p_j$ replaced by $\nu_j$, and therefore
+\[
+\E_D\R_D^{\rm sing}\asymp
+m^{-(b-1)}+(\eta nK)^{-(b-1)/a}+n^{-(b-1)/s}.
+\]
+\end{theorem}
+Since $\nu_j\asymp p_j$ and $\nu_jq_j^2\asymp\lambda_j$, the preceding theorem applies unchanged at exponent level. As $K\to\infty$, this matches the universal capacity/coverage lower bound.
+
+\section{Open Ordinary-SGD Step}
+Ordinary coactive SGD has residual update
+\[
+\delta_{t+1}=(I-\eta X_tX_t^\top)\delta_t,
+\]
+whose rank-one factors do not commute. The next proof step is to truncate at $J_c\asymp(n/\log n)^{1/s}$, concentrate the empirical diagonal, control the whitened off-diagonal covariance, and compare an epoch product with an empirical spectral filter. A systematic dependence on coactivation density would instead reveal a fourth interference frontier.
+
+\end{document}

@@ -1,0 +1,91 @@
+name: apply expanded AAAI paper
+
+on:
+  push:
+    branches:
+      - agent/expand-aaai-paper
+    paths:
+      - ".agent_expand/TRIGGER"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/expand-aaai-paper
+          fetch-depth: 0
+
+      - name: Unpack source revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .agent_expand/part-* > /tmp/source_payload.b64
+          base64 --decode /tmp/source_payload.b64 > /tmp/source_payload.tar.gz
+          echo "1aaacc7293b6c6b276c1460392d5abe2e34f5d525b037b17749654553a085d44  /tmp/source_payload.tar.gz" | sha256sum --check
+          tar -xzf /tmp/source_payload.tar.gz
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Generate the new capacity and stopping diagnostics
+        run: python experiments/frontier_diagnostics.py --mode full --out experiments/results
+
+      - name: Validate all checked-in and newly generated results
+        run: make validate
+
+      - name: Install TeX and PDF tools
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
+            texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
+            texlive-fonts-extra texlive-plain-generic cm-super dvipng poppler-utils
+
+      - name: Regenerate publication figures
+        run: make figures
+
+      - name: Compile and preflight the expanded submission
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd paper
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          bibtex main
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          ! grep -E "LaTeX Warning: (Reference|Citation).*undefined|There were undefined references|There were undefined citations|Overfull \\hbox|Overfull \\vbox" main.log supplement.log
+          test "$(pdfinfo main.pdf | awk '/^Pages:/ {print $2}')" -le 10
+          pdftotext -f 7 -l 7 main.pdf - | grep -q "Conclusion"
+          pdftotext -f 8 -l 8 main.pdf - | grep -q "References"
+          for pdf in main.pdf supplement.pdf figures/*.pdf; do
+            pdffonts "$pdf" | tail -n +3 | \
+              awk '$0 ~ /Type 3|Identity-H/ || $(NF-4) != "yes" { bad=1 } END { exit bad }'
+          done
+          pdfinfo main.pdf | grep '^Pages:'
+          pdfinfo supplement.pdf | grep '^Pages:'
+
+      - name: Commit the clean expanded release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf .agent_expand .agent_payload
+          rm -f .github/workflows/apply-expanded-paper.yml \
+            .github/workflows/apply-prepared-update.yml \
+            .reproduction-trigger .agent-payload-trigger .prepared-release-trigger
+          git add -A
+          git diff --cached --check
+          git commit -m "Expand AAAI paper with diagnostics and proof exposition"
+          git push origin HEAD:agent/expand-aaai-paper

@@ -76,11 +76,27 @@ jobs:
           kpsewhich newtxmath.sty
 
       - name: Regenerate publication figures
+        id: figures
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
-          make figures > /tmp/figures.log 2>&1 || { cat /tmp/figures.log; exit 1; }
+          set -o pipefail
+          make figures > /tmp/figures.log 2>&1
+
+      - name: Upload figure diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: figure-diagnostic
+          path: /tmp/figures.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Fail on figure error
+        if: steps.figures.outcome == 'failure'
+        run: |
           cat /tmp/figures.log
+          exit 1
 
       - name: Check Python sources
         run: python -m py_compile experiments/multi_active_replay.py experiments/plot_results.py experiments/validate_results.py

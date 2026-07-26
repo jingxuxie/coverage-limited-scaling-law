@@ -1,12 +1,11 @@
 name: apply prepared research update
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/sharp-anchor-stopping-rule
-    paths:
-      - ".agent_payload/**"
-      - ".github/workflows/apply-prepared-update.yml"
+      - main
+    types:
+      - opened
 
 permissions:
   contents: write

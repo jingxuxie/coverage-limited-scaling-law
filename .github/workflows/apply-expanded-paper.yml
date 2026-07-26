@@ -41,9 +41,9 @@ jobs:
           path = Path("paper/main.tex")
           text = path.read_text()
           old = r"\bibliographystyle{../AAAI_AuthorKit27/aaai2027}"
-          new = r"\bibliographystyle{aaai2027}"
+          new = "% aaai2027.sty selects the required aaai2027 bibliography style."
           if old not in text:
-              raise SystemExit("expected AAAI bibliography-style declaration not found")
+              raise SystemExit("expected redundant bibliography-style declaration not found")
           path.write_text(text.replace(old, new))
           PY
 

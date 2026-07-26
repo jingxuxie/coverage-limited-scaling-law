@@ -6,12 +6,19 @@ on:
       - agent/expand-aaai-paper
     paths:
       - ".agent_expand/TRIGGER"
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:

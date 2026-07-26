@@ -35,6 +35,17 @@ jobs:
           base64 --decode /tmp/source_payload.b64 > /tmp/source_payload.tar.gz
           echo "1aaacc7293b6c6b276c1460392d5abe2e34f5d525b037b17749654553a085d44  /tmp/source_payload.tar.gz" | sha256sum --check
           tar -xzf /tmp/source_payload.tar.gz
+          cp AAAI_AuthorKit27/aaai2027.bst paper/aaai2027.bst
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("paper/main.tex")
+          text = path.read_text()
+          old = r"\bibliographystyle{../AAAI_AuthorKit27/aaai2027}"
+          new = r"\bibliographystyle{aaai2027}"
+          if old not in text:
+              raise SystemExit("expected AAAI bibliography-style declaration not found")
+          path.write_text(text.replace(old, new))
+          PY
 
       - uses: actions/setup-python@v5
         with:
@@ -55,9 +66,10 @@ jobs:
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
             texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
-            texlive-fonts-extra texlive-plain-generic tex-gyre \
-            cm-super dvipng poppler-utils
+            texlive-fonts-extra texlive-plain-generic texlive-bibtex-extra \
+            tex-gyre cm-super dvipng poppler-utils
           kpsewhich ts1-qtmr.tfm
+          command -v bibtex
 
       - name: Regenerate publication figures
         run: make figures
@@ -68,7 +80,8 @@ jobs:
           set -euo pipefail
           cd paper
           pdflatex -interaction=nonstopmode -halt-on-error main.tex
-          bibtex main
+          bibtex main > main.bibtex.log 2>&1 || { cat main.bibtex.log; exit 1; }
+          cat main.bibtex.log
           pdflatex -interaction=nonstopmode -halt-on-error main.tex
           pdflatex -interaction=nonstopmode -halt-on-error main.tex
           pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
@@ -96,6 +109,9 @@ jobs:
             paper/supplement.pdf
             paper/main.log
             paper/supplement.log
+            paper/main.aux
+            paper/main.bbl
+            paper/main.bibtex.log
           if-no-files-found: warn
           retention-days: 7
 

@@ -1,0 +1,49 @@
+\subsection{Budgeted Data Acquisition and Replay}
+
+The preceding corollaries treat unique examples and updates as independently
+specified resources. A more operational question is how to divide one budget
+between acquiring fresh examples and replaying the examples already available.
+Let one unique example cost $c_{\rm d}>0$, let one SGD update cost
+$c_{\rm u}>0$, and impose
+\begin{equation}
+ c_{\rm d}N+c_{\rm u}T\le B.
+ \label{eq:budget-constraint}
+\end{equation}
+
+\begin{corollary}[Budget allocation]
+\label{cor:budget}
+For a sufficiently small constant $c_0$, choose
+\begin{align}
+N_B&=\left\lfloor c_0\min\left\{
+ n,m^s,(\eta B/c_{\rm u})^{s/a},B/c_{\rm d}
+ \right\}\right\rfloor,\nonumber\\
+T_B&=\left\lfloor\frac{B-c_{\rm d}N_B}{c_{\rm u}}\right\rfloor.
+\label{eq:budget-schedule}
+\end{align}
+Then anchor-masked clipped replay satisfies
+\begin{align}
+\E\R(\widehat w_{T_B})=O\bigl(&m^{-(b-1)}+n^{-(b-1)/s}
+ +(\eta B/c_{\rm u})^{-(b-1)/a}\nonumber\\
+&+(B/c_{\rm d})^{-(b-1)/s}+e^{-cm}\bigr).
+\label{eq:budget-rate}
+\end{align}
+The unmasked output has the same power laws up to logarithms.
+\end{corollary}
+
+The derivation makes the resource tradeoff transparent. The constant $c_0$
+ensures $T_B\asymp B/c_{\rm u}$, and the choice of $N_B$ balances the replay
+term $N^\alpha/(\eta T)$ against the coverage term $N^{-\beta}$, using
+$\alpha+\beta=a/s$. Thus, when $n$ and $m$ do not bind and $a>s$,
+\begin{equation}
+ N_B\asymp(\eta B/c_{\rm u})^{s/a},\qquad
+ K_B=T_B/N_B\asymp B^{1-s/a}.
+ \label{eq:budget-interpretation}
+\end{equation}
+Only a sublinear number of new examples is required as the budget grows; most
+additional budget is eventually spent replaying them until optimization meets
+coverage. When $a=s$, the two scales are both linear and fresh data must retain
+a constant budget share. The schedule is independent of $b$: target smoothness
+changes how much error lies beyond a learned rank, whereas $a$ and $s$ determine
+where the resource frontiers cross. Equation~\eqref{eq:budget-rate} is a
+frontier-matched guarantee for this benchmark, not a universal claim that the
+same cost split is minimax for arbitrary representations or noisy tasks.

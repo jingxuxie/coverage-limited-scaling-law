@@ -55,7 +55,9 @@ jobs:
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
             texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
-            texlive-fonts-extra texlive-plain-generic cm-super dvipng poppler-utils
+            texlive-fonts-extra texlive-plain-generic tex-gyre \
+            cm-super dvipng poppler-utils
+          kpsewhich ts1-qtmr.tfm
 
       - name: Regenerate publication figures
         run: make figures

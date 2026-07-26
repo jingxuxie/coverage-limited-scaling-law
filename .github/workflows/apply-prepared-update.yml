@@ -1,0 +1,94 @@
+name: apply prepared research update
+
+on:
+  push:
+    branches:
+      - agent/sharp-anchor-stopping-rule
+    paths:
+      - ".agent_payload/**"
+      - ".github/workflows/apply-prepared-update.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/sharp-anchor-stopping-rule
+          fetch-depth: 0
+
+      - name: Unpack prepared source update
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .agent_payload/part-* > /tmp/payload.b64
+          base64 --decode /tmp/payload.b64 > /tmp/payload.tar.gz
+          echo "841dc1c345628dc5d67bca97936abcfad1976adaecd723fdac84293c0a354cc5  /tmp/payload.tar.gz" | sha256sum --check
+          tar -xzf /tmp/payload.tar.gz
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Reproduce the full experiment suite
+        run: make full
+
+      - name: Validate all result tables
+        run: make validate
+
+      - name: Install figure and manuscript dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
+            texlive-fonts-extra cm-super poppler-utils
+
+      - name: Regenerate publication figures
+        run: make figures
+
+      - name: Check Python sources
+        run: python -m py_compile experiments/multi_active_replay.py experiments/plot_results.py experiments/validate_results.py
+
+      - name: Compile manuscript and supplement
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/paper-check
+          mkdir -p /tmp/paper-check
+          cp -R paper AAAI_AuthorKit27 /tmp/paper-check/
+          cd /tmp/paper-check/paper
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          bibtex main
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          test "$(pdfinfo main.pdf | awk '/^Pages:/ {print $2}')" -le 7
+          ! grep -E "LaTeX Warning: (Reference|Citation).*undefined|There were undefined references|There were undefined citations|Overfull \\hbox|Overfull \\vbox" main.log supplement.log
+          for figure in figures/*.pdf; do
+            ! pdffonts "$figure" | tail -n +3 | grep -Eq 'Type 3|no[[:space:]]+no'
+          done
+
+      - name: Commit the reproduced release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md experiments notes paper
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Prepared update produced no changes" >&2
+            exit 1
+          fi
+          git commit -m "Sharpen coactive replay theorem and add stopping rule"
+          git push origin HEAD:agent/sharp-anchor-stopping-rule

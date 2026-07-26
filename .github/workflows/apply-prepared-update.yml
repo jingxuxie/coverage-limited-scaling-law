@@ -1,10 +1,9 @@
-# Registered before this push so the prepared release workflow is triggered.
 name: apply prepared research update
 
 on:
   pull_request:
     branches:
-      - main
+      - agent/reproduction-base
     types:
       - opened
       - reopened
@@ -31,6 +30,16 @@ jobs:
           base64 --decode /tmp/payload.b64 > /tmp/payload.tar.gz
           echo "841dc1c345628dc5d67bca97936abcfad1976adaecd723fdac84293c0a354cc5  /tmp/payload.tar.gz" | sha256sum --check
           tar -xzf /tmp/payload.tar.gz
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("experiments/plot_results.py")
+          text = path.read_text()
+          old = r'ax.set_xlabel("input-only predicted $K_{\rm sat}$")'
+          new = r'ax.set_xlabel(r"input-only predicted $K_{\rm sat}$")'
+          if old not in text:
+              raise SystemExit("expected stopping-estimator label not found")
+          path.write_text(text.replace(old, new))
+          PY
 
       - uses: actions/setup-python@v5
         with:
@@ -38,7 +47,6 @@ jobs:
           cache: pip
 
       - name: Install Python dependencies
-        shell: bash
         run: python -m pip install -q -r requirements.txt
 
       - name: Reproduce the full experiment suite
@@ -64,29 +72,14 @@ jobs:
             texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
             texlive-fonts-extra cm-super dvipng poppler-utils \
             > /tmp/apt-install.log 2>&1
-          command -v latex
-          command -v dvipng
-          kpsewhich newtxtext.sty || true
-          kpsewhich newtxmath.sty || true
-          python - <<'PY'
-          import matplotlib
-          print('matplotlib', matplotlib.__version__)
-          PY
+          kpsewhich newtxtext.sty
+          kpsewhich newtxmath.sty
 
       - name: Regenerate publication figures
         shell: bash
         run: |
           set -euo pipefail
-          if ! make figures > /tmp/figures.log 2>&1; then
-            echo '===== COMPLETE FIGURE TRACEBACK ====='
-            cat /tmp/figures.log
-            echo '===== TEX LOCATIONS ====='
-            kpsewhich newtxtext.sty || true
-            kpsewhich newtxmath.sty || true
-            latex --version | head -n 2 || true
-            dvipng --version | head -n 2 || true
-            exit 1
-          fi
+          make figures > /tmp/figures.log 2>&1 || { cat /tmp/figures.log; exit 1; }
           cat /tmp/figures.log
 
       - name: Check Python sources
@@ -109,7 +102,8 @@ jobs:
           test "$(pdfinfo main.pdf | awk '/^Pages:/ {print $2}')" -le 7
           ! grep -E "LaTeX Warning: (Reference|Citation).*undefined|There were undefined references|There were undefined citations|Overfull \\hbox|Overfull \\vbox" main.log supplement.log
           for figure in figures/*.pdf; do
-            ! pdffonts "$figure" | tail -n +3 | grep -Eq 'Type 3|no[[:space:]]+no'
+            pdffonts "$figure" | tail -n +3 | \
+              awk '$0 ~ /Type 3|Identity-H/ || $(NF-4) != "yes" { bad=1 } END { exit bad }'
           done
           pdfinfo main.pdf | grep '^Pages:'
           pdfinfo supplement.pdf | grep '^Pages:'

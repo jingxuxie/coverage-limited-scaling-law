@@ -1,3 +1,4 @@
+# Registered before this push so the prepared release workflow is triggered.
 name: apply prepared research update
 
 on:

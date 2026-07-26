@@ -11,3 +11,9 @@ venv/
 *.log
 *.out
 *.synctex.gz
+build_check/
+experiments/quick_results/
+experiments/release_results/
+paper/figures/*.png
+full_run.log
+plot.log

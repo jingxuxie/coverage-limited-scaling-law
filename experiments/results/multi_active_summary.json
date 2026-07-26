@@ -1,0 +1,84 @@
+{
+  "all_data": {
+    "two_term_fit": {
+      "average": {
+        "optimization_coefficient": 0.9162585127471359,
+        "coverage_coefficient": 1.1245636184852363,
+        "r_squared": 0.9805415381555302,
+        "median_relative_error": 0.09542519442600537
+      },
+      "last": {
+        "optimization_coefficient": 0.5938036759110288,
+        "coverage_coefficient": 1.2683116066835018,
+        "r_squared": 0.9759380406824397,
+        "median_relative_error": 0.09966428027875779
+      }
+    },
+    "predicted_optimization_slope": -0.5,
+    "measured_early_average_slope": -0.4587498149127876,
+    "predicted_coverage_slope": -0.6666666666666666,
+    "measured_large_epoch_average_slope": -0.6547680734211003,
+    "measured_large_epoch_last_slope": -0.6554207342500974
+  },
+  "progressive_schedule": {
+    "last_slope": -0.4970074311540099,
+    "average_slope": -0.5015935459680445,
+    "floor_slope": -0.4973685739356734
+  },
+  "fixed_compute": {
+    "total_updates": 262144,
+    "risk_ratio_fewest_over_most_unique": 12.838412479330295
+  },
+  "source_exponents": {
+    "1.4": {
+      "predicted": -0.2666666666666666,
+      "last": -0.26379674372092077,
+      "average": -0.2632792568335235
+    },
+    "1.7": {
+      "predicted": -0.4666666666666666,
+      "last": -0.4587685983082704,
+      "average": -0.45803610533827177
+    },
+    "2.0": {
+      "predicted": -0.6666666666666666,
+      "last": -0.6540413538430989,
+      "average": -0.6531852520595346
+    },
+    "2.4": {
+      "predicted": -0.9333333333333332,
+      "last": -0.9159711760085057,
+      "average": -0.9150035184542182
+    }
+  },
+  "spectrum_grid": {
+    "a=2,s=1.5,b=2,mu=1": {
+      "predicted_optimization_slope": -0.5,
+      "measured_optimization_slope": -0.4574955350031598,
+      "predicted_coverage_slope": -0.6666666666666666,
+      "measured_coverage_slope": -0.6555208767752152,
+      "two_term_r_squared": 0.9885878537493671,
+      "two_term_median_relative_error": 0.07441860829198993
+    },
+    "a=2.4,s=1.5,b=2,mu=1": {
+      "predicted_optimization_slope": -0.4166666666666667,
+      "measured_optimization_slope": -0.403426338817772,
+      "predicted_coverage_slope": -0.6666666666666666,
+      "measured_coverage_slope": -0.6129951168603975,
+      "two_term_r_squared": 0.9955202654122939,
+      "two_term_median_relative_error": 0.038146535323871904
+    },
+    "a=2.5,s=2,b=2.5,mu=1": {
+      "predicted_optimization_slope": -0.6,
+      "measured_optimization_slope": -0.5449911836165008,
+      "predicted_coverage_slope": -0.75,
+      "measured_coverage_slope": -0.7875526547721988,
+      "two_term_r_squared": 0.9926320653061802,
+      "two_term_median_relative_error": 0.09020117899412955
+    }
+  },
+  "reproducibility": {
+    "risk_checkpoints": 4285,
+    "training_runs": 670
+  }
+}

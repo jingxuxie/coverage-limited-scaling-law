@@ -73,14 +73,29 @@ jobs:
           pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
           ! grep -E "LaTeX Warning: (Reference|Citation).*undefined|There were undefined references|There were undefined citations|Overfull \\hbox|Overfull \\vbox" main.log supplement.log
           test "$(pdfinfo main.pdf | awk '/^Pages:/ {print $2}')" -le 10
-          pdftotext -f 7 -l 7 main.pdf - | grep -q "Conclusion"
-          pdftotext -f 8 -l 8 main.pdf - | grep -q "References"
+          pdftotext -f 7 -l 7 main.pdf /tmp/main-page7.txt
+          pdftotext -f 8 -l 8 main.pdf /tmp/main-page8.txt
+          grep -q "Conclusion" /tmp/main-page7.txt
+          grep -q "References" /tmp/main-page8.txt
           for pdf in main.pdf supplement.pdf figures/*.pdf; do
             pdffonts "$pdf" | tail -n +3 | \
               awk '$0 ~ /Type 3|Identity-H/ || $(NF-4) != "yes" { bad=1 } END { exit bad }'
           done
           pdfinfo main.pdf | grep '^Pages:'
           pdfinfo supplement.pdf | grep '^Pages:'
+
+      - name: Upload exact paper build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expanded-aaai-paper-build
+          path: |
+            paper/main.pdf
+            paper/supplement.pdf
+            paper/main.log
+            paper/supplement.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Commit the clean expanded release
         shell: bash

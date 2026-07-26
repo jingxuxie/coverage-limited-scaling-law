@@ -38,13 +38,38 @@ jobs:
           cp AAAI_AuthorKit27/aaai2027.bst paper/aaai2027.bst
           python - <<'PY'
           from pathlib import Path
-          path = Path("paper/main.tex")
-          text = path.read_text()
-          old = r"\bibliographystyle{../AAAI_AuthorKit27/aaai2027}"
-          new = "% aaai2027.sty selects the required aaai2027 bibliography style."
-          if old not in text:
+
+          main = Path("paper/main.tex")
+          text = main.read_text()
+          style = r"\bibliographystyle{../AAAI_AuthorKit27/aaai2027}"
+          if style not in text:
               raise SystemExit("expected redundant bibliography-style declaration not found")
-          path.write_text(text.replace(old, new))
+          text = text.replace(
+              style,
+              "% aaai2027.sty selects the required aaai2027 bibliography style.",
+              1,
+          )
+
+          marker = (
+              "The progressive subset is a conservative achievability construction rather\n"
+              "than a claim that discarding data is optimal. At fixed update compute, the\n"
+              "experiments consistently favor more unique examples.\n\n"
+          )
+          if marker not in text:
+              raise SystemExit("main-paper budget insertion marker not found")
+          budget = Path(".agent_expand/budget_main.tex").read_text()
+          text = text.replace(marker, marker + budget + "\n", 1)
+          main.write_text(text)
+
+          supplement = Path("paper/supplement.tex")
+          supp_text = supplement.read_text()
+          supp_marker = "\\section{Input-Only Saturation Estimation}\n"
+          if supp_marker not in supp_text:
+              raise SystemExit("supplement budget insertion marker not found")
+          supp_budget = Path(".agent_expand/budget_supp.tex").read_text()
+          supplement.write_text(
+              supp_text.replace(supp_marker, supp_budget + "\n" + supp_marker, 1)
+          )
           PY
 
       - uses: actions/setup-python@v5

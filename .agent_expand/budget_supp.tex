@@ -1,0 +1,47 @@
+\section{Budgeted Acquisition and Replay}
+
+The main paper states a budgeted version of the frontier-matched schedule. We
+record the argument explicitly. Let $c_{\rm d}$ be the cost of acquiring one
+unique example, $c_{\rm u}$ the cost of one update, and let
+$c_{\rm d}N+c_{\rm u}T\le B$. Define
+\[
+N_B=\left\lfloor c_0\min\left\{
+ n,m^s,(\eta B/c_{\rm u})^{s/a},B/c_{\rm d}
+\right\}\right\rfloor
+\]
+for a sufficiently small numerical $c_0$, and set
+$T_B=\lfloor(B-c_{\rm d}N_B)/c_{\rm u}\rfloor$.
+
+\begin{corollary}[Budgeted frontier matching]
+For $N_B$ above a fixed constant,
+\begin{align*}
+\E\R(\widehat w_{T_B})=O\bigl(&m^{-(b-1)}+n^{-(b-1)/s}
+ +(\eta B/c_{\rm u})^{-(b-1)/a}\\
+&+(B/c_{\rm d})^{-(b-1)/s}+e^{-cm}\bigr).
+\end{align*}
+\end{corollary}
+
+\begin{proof}
+Choose $c_0\le1/2$. Since $N_B\le c_0B/c_{\rm d}$,
+$T_B\ge B/(2c_{\rm u})-1$, and hence $T_B\asymp B/c_{\rm u}$. Moreover,
+\[
+N_B^{1/s}\lesssim
+\min\left\{n^{1/s},m,(\eta B/c_{\rm u})^{1/a},
+(B/c_{\rm d})^{1/s}\right\}.
+\]
+Apply Corollary~\ref{cor:supp-full} with $T=T_B$ and the selected subset size
+$N_B$. The optimization contribution obeys
+$N_B^\alpha/(\eta T_B)\lesssim N_B^{-\beta}$ because
+$N_B\lesssim(\eta B/c_{\rm u})^{s/a}$ and
+$\alpha+\beta=a/s$. Converting $N_B^{-\beta}$ to the maximum of the four
+frontier tails gives the stated sum up to a constant factor.
+\end{proof}
+
+When $n$ and $m$ are nonbinding and $a>s$, the acquisition constraint
+$N_B\le B/c_{\rm d}$ is asymptotically inactive, so
+$N_B\asymp B^{s/a}$, $T_B\asymp B$, and
+$K_B=T_B/N_B\asymp B^{1-s/a}$. For $a=s$, fresh data and updates must instead
+receive constant fractions of the budget. In either case the allocation
+exponent is independent of $b$, for the same reason as the saturation epoch:
+$b$ converts learned rank into risk but does not determine the rank at which
+optimization and coverage meet.

@@ -70,10 +70,11 @@ jobs:
           sudo apt-get update -qq > /tmp/apt-update.log 2>&1
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
             texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
-            texlive-fonts-extra cm-super dvipng poppler-utils \
+            texlive-fonts-extra texlive-plain-generic cm-super dvipng poppler-utils \
             > /tmp/apt-install.log 2>&1
           kpsewhich newtxtext.sty
           kpsewhich newtxmath.sty
+          kpsewhich binhex.tex
 
       - name: Regenerate publication figures
         id: figures

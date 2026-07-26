@@ -1,70 +1,60 @@
-# Research Roadmap
+# Research Roadmap and Current Status
 
-## Central claim under investigation
+## Completed theorem stack
 
-Repeated optimization can only reveal directions present in the unique data. In sparse power-law regression, model width, optimization time, and unique-feature occupancy create distinct frontiers:
+The original roadmap asked whether ordinary replay SGD on genuinely multi-active sparse examples follows the coverage-limited law. The following pieces are now rigorous.
 
-\[
-J_{\mathrm{cap}}=m,
-\qquad
-J_{\mathrm{opt}}=(\eta nK)^{1/a},
-\qquad
-J_{\mathrm{cov}}=n^{1/s}.
-\]
+1. An algorithm-independent unseen-feature lower bound and its sharp power-law constant.
+2. An exact finite-epoch one-hot replay formula with capacity, optimization, and coverage frontiers.
+3. Statistical achievability for multi-active data using singleton-filtered replay.
+4. A new **all-row coactive replay theorem** for example-norm-clipped, with-replacement SGD with Polyak averaging.
+5. An all-data saturation corollary:
+   \[
+   K_{\rm sat}=\widetilde O(\eta^{-1}n^{a/s-1}).
+   \]
+6. A progressive-data schedule attaining
+   \[
+   \widetilde O\!\left(
+   m^{-(b-1)}+(\eta T)^{-(b-1)/a}+n^{-(b-1)/s}
+   \right).
+   \]
 
-The working law is
+The noncommuting rank-one update obstruction is handled by two observations: clipping makes every coactive update a Euclidean contraction, and naturally occurring singleton rows certify coordinate-wise curvature without being filtered out by the optimizer.
 
-\[
-\mathcal E(m,n,K)
-\asymp
-\min\{J_{\mathrm{cap}},J_{\mathrm{opt}},J_{\mathrm{cov}}\}^{1-b}.
-\]
+## Completed empirical package
 
-## Completed in proof version 1
+The release sweep contains 670 sparse training runs and 4,285 risk checkpoints. It tests:
 
-- Universal unseen-feature lower bound for arbitrary learners.
-- Power-law occupancy asymptotics.
-- Capacity-plus-coverage lower bound.
-- Exact finite-epoch one-hot theorem.
-- Matching one-hot three-frontier rate.
-- Exact multi-active theorem for singleton-filtered replay SGD.
-- Exact numerical pilot confirming the optimization and coverage exponents.
+- optimization-to-coverage transitions over `n` and `K`;
+- the three-frontier scaling collapse;
+- the progressive compute schedule;
+- fixed-compute fresh-data versus reuse allocation;
+- four source exponents;
+- three spectral configurations;
+- coactivation density and sampling protocol;
+- clipped versus unclipped stability.
 
-## Main theorem still required
+The fixed-exponent two-term model explains 98.1% of averaged-risk variation, the progressive schedule has slope `-0.5016`, and all source-exponent slopes are within `0.02` of their predictions.
 
-Prove a finite-time upper bound for ordinary multi-pass SGD that uses all coactive examples. Candidate variants, in increasing difficulty:
+## Submission-ready claim boundary
 
-1. With-replacement sampling from a fixed dataset, clipped updates.
-2. Independent random reshuffling each epoch.
-3. Same-order cyclic replay.
-4. Random Gaussian sketch followed by trainable linear readout.
+The paper claims a theorem for:
 
-## Experiment sequence
+- independent Bernoulli sparse coordinates;
+- `s>1`, `a>=s`, and source range `a-s+1<b<a+1`;
+- noiseless realizable labels on the observed dictionary;
+- with-replacement replay;
+- example-norm clipping;
+- Polyak averaging;
+- an observable support certificate, with zero fallback on certificate failure.
 
-1. Implement sparse multi-active data generation without dense matrices.
-2. Compare ordinary, clipped, and singleton-filtered SGD.
-3. Sweep unique data \(n\), epochs \(K\), width \(m\), and sparsity mass \(\mu=\sum_jp_j\).
-4. Measure pre-saturation slope, plateau height, and saturation epoch.
-5. Test collapse against the three-frontier prediction.
-6. Hold \(nK\) fixed and vary the unique/reuse split.
-7. Add random sketches only after the direct model is understood.
+The experiments additionally test unguarded last iterates, cyclic replay, and random reshuffling. These are reported as empirical robustness, not theorem-level guarantees.
 
-## Go/no-go criteria
+## Strong follow-up directions
 
-Continue with the simple three-frontier theory if ordinary SGD shows:
-
-- pre-plateau slope near \(-(b-1)/a\),
-- large-epoch floor near \(n^{-(b-1)/s}\),
-- saturation near \(\min(m^a,n^{a/s})/(\eta n)\), and
-- stable collapse across at least two choices of \((a,s,b)\).
-
-If these fail systematically as coactivation density increases, characterize the deviation as an interference frontier rather than hiding it.
-
-## Paper framing
-
-The one-hot result is a benchmark and should not be presented as the principal novelty. The strongest defensible story is:
-
-1. unique-data coverage gives an information-theoretic floor;
-2. that floor is achievable for genuinely multi-active sparse data;
-3. ordinary replay SGD either matches the three-frontier law or exhibits a new coactivation-dependent regime;
-4. the resulting saturation estimator decides when another epoch is less useful than another unique example.
+1. Remove the logarithm by replacing simultaneous singleton coverage with a weighted occupancy argument.
+2. Prove the pre-saturation `K^{-(b-1)/a}` last-iterate rate for ordinary all-data replay.
+3. Extend the contraction proof to independently reshuffled and cyclic replay.
+4. Add label noise and characterize the interaction between coverage and variance floors.
+5. Replace coordinate-addressable features by a Gaussian random sketch or nonlinear random features.
+6. Derive and validate an unlabeled estimator of the stopping epoch from empirical occupancy and covariance statistics.

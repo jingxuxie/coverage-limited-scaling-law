@@ -1,0 +1,43 @@
+\subsection{Diagnosing the Active Frontier}
+
+The three-term law can diagnose the active bottleneck locally.  Write
+\begin{equation}
+L(m,T,N)=C_m m^{-\delta}+C_T(\eta T)^{-\gamma}+C_NN^{-\beta},
+\label{eq:elasticity-proxy}
+\end{equation}
+where $\delta=b-1$, $\gamma=(b-1)/a$, and $\beta=(b-1)/s$.
+Define the positive logarithmic elasticities
+\[
+\begin{aligned}
+e_m&=-\partial_{\log m}\log L, &
+e_T&=-\partial_{\log T}\log L, &
+e_N&=-\partial_{\log N}\log L.
+\end{aligned}
+\]
+
+\begin{proposition}[Frontier weights]
+\label{prop:elasticity}
+For Eq.~\eqref{eq:elasticity-proxy},
+\begin{equation}
+\frac{e_m}{\delta}+\frac{e_T}{\gamma}+\frac{e_N}{\beta}=1.
+\label{eq:elasticity-simplex}
+\end{equation}
+Each normalized elasticity equals the fraction of predicted risk contributed by
+its corresponding term.
+\end{proposition}
+\begin{proof}
+Differentiate Eq.~\eqref{eq:elasticity-proxy} with respect to the three
+logarithmic resources and divide by $L$.
+\end{proof}
+
+Thus the normalized elasticities form a scale-local phase map without requiring
+the constants $C_m,C_T,C_N$.  A large width, update, or unique-data weight
+identifies a capacity, optimization, or coverage bottleneck, respectively.  The
+optimization--coverage boundary satisfies
+$C_T(\eta T)^{-\gamma}\asymp C_NN^{-\beta}$, recovering
+$K=T/N\asymp\eta^{-1}N^{a/s-1}$.  The measured slopes probe all three corners:
+$-0.991$ versus $-\delta=-1$ for width, $-0.459$ versus
+$-\gamma=-1/2$ for early updates, and $-0.655$ versus
+$-\beta=-2/3$ for unique data.  Finite differences on neighboring logarithmic
+scale points therefore provide a practical rule: increase the resource with the
+largest normalized elasticity, and stop replay when its weight becomes small.

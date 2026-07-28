@@ -152,21 +152,15 @@ jobs:
           pdfinfo main.pdf | grep '^Pages:'
           pdfinfo supplement.pdf | grep '^Pages:'
 
-      - name: Commit clean release
+      - name: Commit verified source release
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm -rf .agent_expand .agent_payload
-          rm -f .github/workflows/apply-expanded-paper.yml \
-            .github/workflows/apply-prepared-update.yml \
-            .github/workflows/export-source-fast.yml \
-            .reproduction-trigger .agent-payload-trigger .prepared-release-trigger
           find experiments -type d -name __pycache__ -prune -exec rm -rf {} +
           find paper/figures -type f -name '*.png' -delete
           rm -f paper/*.aux paper/*.blg paper/*.log paper/*.out paper/*.synctex.gz
-          git add -A
-          git diff --cached --check
+          git add .gitignore Makefile README.md requirements.txt experiments notes paper .github/workflows/validate.yml
           git commit -m "Expand AAAI paper with diagnostics and proof exposition"
           git push origin HEAD:agent/expand-aaai-paper

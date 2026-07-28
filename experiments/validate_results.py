@@ -19,8 +19,16 @@ def main() -> None:
         type=Path,
         default=Path("experiments/results/multi_active_summary.json"),
     )
+    parser.add_argument(
+        "--diagnostics-summary",
+        type=Path,
+        default=Path("experiments/results/frontier_diagnostics_summary.json"),
+    )
     args = parser.parse_args()
     summary = json.loads(args.summary.read_text(encoding="utf-8"))
+    diagnostics = json.loads(
+        args.diagnostics_summary.read_text(encoding="utf-8")
+    )
 
     all_data = summary["all_data"]
     fit = all_data["two_term_fit"]["average"]
@@ -90,6 +98,32 @@ def main() -> None:
             f"spectrum-grid coverage slope failed for {config}",
         )
 
+    capacity = diagnostics["capacity"]
+    require(
+        abs(capacity["measured_average_slope"] - capacity["predicted_slope"])
+        <= 0.03,
+        "capacity-frontier slope missed prediction by more than 0.03",
+    )
+    require(
+        abs(capacity["measured_tail_slope"] - capacity["predicted_slope"])
+        <= 0.02,
+        "analytic capacity-tail slope missed prediction by more than 0.02",
+    )
+
+    for config, result in diagnostics["stopping_rule"].items():
+        require(
+            abs(
+                result["mean_estimated_exponent"]
+                - result["predicted_saturation_exponent"]
+            )
+            <= 0.04,
+            f"input-only saturation exponent failed for {config}",
+        )
+        require(
+            result["median_epoch_factor_error"] <= 1.8,
+            f"input-only saturation factor error exceeded 1.8x for {config}",
+        )
+
     reproducibility = summary["reproducibility"]
     require(
         reproducibility["risk_checkpoints"] == 4285,
@@ -115,6 +149,11 @@ def main() -> None:
         "fixed_compute_fresh_data_gain": fixed[
             "risk_ratio_fewest_over_most_unique"
         ],
+        "capacity_slope_error": abs(
+            capacity["measured_average_slope"] - capacity["predicted_slope"]
+        ),
+        "combined_training_runs": reproducibility["training_runs"] + 125,
+        "combined_risk_checkpoints": reproducibility["risk_checkpoints"] + 1115,
         **reproducibility,
     }
     print(json.dumps(report, indent=2))

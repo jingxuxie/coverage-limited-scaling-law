@@ -16,6 +16,7 @@
 \newtheorem{corollary}[theorem]{Corollary}
 \newcommand{\E}{\mathbb E}
 \newcommand{\R}{\mathcal R}
+\newcommand{\cA}{\mathcal A}
 \newcommand{\cS}{\mathcal S}
 \newcommand{\1}{\mathbf 1}
 
@@ -29,165 +30,277 @@ When More Epochs Stop Helping: Coverage-Limited Scaling Laws for Sparse Replay}
 
 \section{Notation and Assumptions}
 
-For coordinate \(j\ge1\),
+For coordinate $j\ge1$,
 \[
-X_j=q_jZ_jE_j,\qquad
-Z_j\sim{\rm Bernoulli}(p_j),\qquad
-E_j\sim{\rm Rad},
+X_j=q_jZ_jE_j,
+\qquad Z_j\sim{\rm Bernoulli}(p_j),
+\qquad E_j\sim{\rm Rad},
 \]
-independently over coordinates and examples.  The covariance is diagonal with
-\(\lambda_j=p_jq_j^2\).  Labels are
-\(Y=\langle\theta,X\rangle\), and
-\(g_j=\lambda_j\theta_j^2\).  There are constants
-\(0<c<C<\infty\) such that
-\[
-\begin{aligned}
+independently over coordinates and examples. The covariance is diagonal with
+$\lambda_j=p_jq_j^2$. Labels are $Y=\langle\theta,X\rangle$, and
+$g_j=\lambda_j\theta_j^2$. Unless an exact constant is stated, there are
+constants $0<c<C<\infty$ such that
+\begin{align*}
 cj^{-s}&\le p_j\le Cj^{-s},\\
 cj^{-a}&\le\lambda_j\le Cj^{-a},\\
 cj^{-b}&\le g_j\le Cj^{-b}.
-\end{aligned}
-\]
+\end{align*}
 We assume
 \[
-s>1,\qquad a\ge s,\qquad b>1,\qquad
-\sup_jp_j<1,
+s>1,
+\qquad a\ge s,
+\qquad b>1,
+\qquad \sup_jp_j<1.
 \]
-and that \(\lambda_j\) is nonincreasing up to a constant.  For the coactive
-upper bound we additionally assume
-\[
+For the coactive upper bound, we additionally assume
+\begin{equation}
 a-s+1<b<a+1.
-\]
+\label{eq:supp-source}
+\end{equation}
 Define
 \[
-\alpha=\frac{a-b+1}{s},\qquad
-\beta=\frac{b-1}{s},
+\alpha=\frac{a-b+1}{s},
+\qquad
+\beta=\frac{b-1}{s}.
 \]
-so \(0<\alpha<1\), \(\beta>0\), and
-\(\alpha+\beta=a/s\).
+Then Eq.~\eqref{eq:supp-source} is equivalent to $0<\alpha<1$, and
+$\alpha+\beta=a/s$.
 
-Since \(\sum_jp_j<\infty\), the Borel--Cantelli lemma implies that every input
-has finite support almost surely.  Thus all inner products below are
-well-defined even though the ambient feature set is countably infinite.
-For linear predictors, population excess risk is
+Since $\sum_jp_j<\infty$, the Borel--Cantelli lemma implies that every input
+has finite support almost surely. For linear predictors,
 \[
 \R(w)=\sum_j\lambda_j(w_j-\theta_j)^2.
 \]
 For arbitrary measurable predictors, write
-\(\R(f;\theta)=\E_X[(f(X)-\langle\theta,X\rangle)^2]\).
+$\R(f;\theta)=\E_X[(f(X)-\langle\theta,X\rangle)^2]$.
+
+For $N$ unique examples, define
+\begin{align*}
+\cS_N&=\bigcup_{i=1}^N{\rm supp}(X_i),
+&V_N&=|\cS_N|,\\
+A_N&=\sum_{j\in\cS_N}\theta_j^2,
+&U_N&=\sum_{j\notin\cS_N}g_j.
+\end{align*}
+The coordinate-presence indicators
+$I_{N,j}=\1\{j\in\cS_N\}$ are independent across $j$, with
+\[
+r_{N,j}:=\E I_{N,j}=1-(1-p_j)^N.
+\]
+
+\section{A Power-Law Summation Lemma}
+
+The proofs repeatedly use the following regular-variation calculation.
+
+\begin{lemma}[Observed and missing power-law sums]
+\label{lem:master-sum}
+Let $p_j=c_pj^{-s}$ with $s>1$ and $0<c_p<1$.
+
+\begin{enumerate}
+\item If $-1<r<s-1$ and $\xi=(r+1)/s\in(0,1)$, then
+\begin{equation}
+\sum_{j\ge1}j^r\{1-(1-p_j)^N\}
+\sim
+\frac{\Gamma(1-\xi)}{r+1}(c_pN)^\xi.
+\label{eq:observed-sum}
+\end{equation}
+\item If $b>1$ and $\beta=(b-1)/s$, then
+\begin{equation}
+\sum_{j\ge1}j^{-b}(1-p_j)^N
+\sim
+\frac1s\Gamma(\beta)(c_pN)^{-\beta}.
+\label{eq:missing-sum}
+\end{equation}
+\end{enumerate}
+The same expressions hold up to constant factors for two-sided power laws.
+\end{lemma}
+
+\begin{proof}
+Set $J=(c_pN)^{1/s}$. For the observed sum, rescale $j=Ju$. On compact
+subsets of $(0,\infty)$,
+\[
+1-(1-c_pj^{-s})^N\longrightarrow1-e^{-u^{-s}}.
+\]
+The head and tail are dominated by
+$C\min\{1,u^{-s}\}u^r$, which is integrable exactly when
+$-1<r<s-1$. Therefore
+\begin{multline*}
+J^{-(r+1)}\sum_jj^r\{1-(1-c_pj^{-s})^N\}\\
+\longrightarrow
+\int_0^\infty u^r(1-e^{-u^{-s}})\,du.
+\end{multline*}
+With $t=u^{-s}$,
+\[
+\int_0^\infty u^r(1-e^{-u^{-s}})\,du
+=\frac1s\int_0^\infty t^{-\xi-1}(1-e^{-t})\,dt.
+\]
+Integration by parts gives
+$\Gamma(1-\xi)/(s\xi)=\Gamma(1-\xi)/(r+1)$.
+
+For the missing sum, the same rescaling gives
+\[
+J^{b-1}\sum_jj^{-b}(1-c_pj^{-s})^N
+\longrightarrow
+\int_0^\infty u^{-b}e^{-u^{-s}}\,du.
+\]
+The substitution $t=u^{-s}$ evaluates the integral as
+$s^{-1}\Gamma((b-1)/s)$. Standard dyadic-shell bounds provide domination and
+also prove the two-sided-order statements.
+\end{proof}
 
 \section{Universal Coverage Lower Bound}
 
-For the lower bound, write
-\(\theta_j=\tau_j\Omega_j\), where the magnitudes \(\tau_j\) are fixed and
-\(\Omega_j\) are independent Rademacher signs.
+Write $\theta_j=\tau_j\Omega_j$, where the magnitudes $\tau_j$ are fixed and
+the $\Omega_j$ are independent Rademacher signs.
 
 \begin{theorem}[Unseen-feature lower bound]
-For every measurable, possibly randomized predictor trained on \(n\) unique
+\label{thm:supp-lower}
+For every measurable, possibly randomized predictor trained on $N$ unique
 examples,
 \[
-\E_{\Omega,D_n}\R(\widehat f;\theta)
+\E_{\Omega,D_N}\R(\widehat f;\theta)
 \ge
-\sum_{j\ge1}g_j(1-p_j)^n.
+\sum_{j\ge1}g_j(1-p_j)^N.
+\]
+Consequently, under the power-law assumptions,
+\[
+\E_{\Omega,D_N}\R(\widehat f;\theta)
+\gtrsim N^{-(b-1)/s}.
+\]
+For exact $p_j=c_pj^{-s}$ and $g_j=c_gj^{-b}$, the lower bound is
+asymptotic to
+\[
+\frac{c_g}{s}\Gamma\!\left(\frac{b-1}{s}\right)
+(c_pN)^{-(b-1)/s}.
 \]
 \end{theorem}
 
 \begin{proof}
 Let
+$\mathcal U(D_N)=\{j:Z_{1j}=\cdots=Z_{Nj}=0\}$ be the unseen coordinates.
+Conditional on the training inputs, teacher signs outside $\mathcal U$, and
+the learner's internal randomness, no training label depends on
+$\{\Omega_j:j\in\mathcal U\}$. These signs remain independent and symmetric.
+For an independent test input, write
 \[
-U(D_n)=\{j:Z_{1j}=\cdots=Z_{nj}=0\}
+H(X)=\sum_{j\notin\mathcal U}\tau_j\Omega_jX_j.
 \]
-be the set of unseen coordinates.  Conditional on all training inputs, all
-teacher signs outside \(U\), and the learner's internal randomness, no
-training label depends on \(\{\Omega_j:j\in U\}\).  These signs therefore
-remain independent and symmetric.
-
-For an independent test input, define
-\[
-H(X)=\sum_{j\notin U}\tau_j\Omega_jX_j.
-\]
-For any finite \(F\subset U\),
+For every finite $F\subset\mathcal U$, averaging squared error over the signs
+in $F$ makes all cross terms vanish and yields
 \begin{align*}
 &\E_{\Omega_F}
 \left(
-\widehat f(X)-H(X)
--\sum_{j\in F}\tau_j\Omega_jX_j
--\sum_{j\in U\setminus F}\tau_j\Omega_jX_j
+\widehat f(X)-H(X)-\sum_{j\in\mathcal U}\tau_j\Omega_jX_j
 \right)^2\\
-&\hspace{5mm}\ge
-\sum_{j\in F}\tau_j^2X_j^2.
+&\hspace{25mm}\ge\sum_{j\in F}\tau_j^2X_j^2.
 \end{align*}
-Equivalently, one can first absorb the coordinates in \(U\setminus F\) into
-the term independent of \(\Omega_F\); all cross terms vanish by symmetry.
-Let \(F\uparrow U\) and use monotone convergence.  Averaging over the test
-input gives at least
-\[
-\sum_{j\in U}\lambda_j\tau_j^2
-=
-\sum_{j\in U}g_j.
-\]
-Finally,
-\(\Pr(j\in U)=(1-p_j)^n\), which proves the claim.
+Let $F\uparrow\mathcal U$ and apply monotone convergence. Averaging over the
+test input gives at least $\sum_{j\in\mathcal U}g_j$. Finally,
+$\Pr(j\in\mathcal U)=(1-p_j)^N$. The asymptotics follow from
+Lemma~\ref{lem:master-sum}.
 \end{proof}
 
-This is a Bayes lower bound under the uniform sign prior and therefore also a
-minimax lower bound over deterministic teacher-sign choices.
+Because the left-hand side is a Bayes risk under the uniform sign prior, its
+value is no larger than the corresponding minimax risk. Hence the same rate is
+a minimax lower bound over deterministic teacher-sign choices.
 
-\begin{lemma}[Power-law occupancy tail]
-If \(p_j\asymp j^{-s}\) and \(g_j\asymp j^{-b}\), then
+\section{Occupancy Calculus}
+
+\begin{proposition}[Dictionary size, observed norm, and missing energy]
+\label{prop:supp-occupancy}
+Under the power-law assumptions,
 \[
-\sum_jg_j(1-p_j)^n\asymp n^{-(b-1)/s}.
+\E V_N\asymp N^{1/s},
+\qquad
+\E A_N\asymp N^\alpha,
+\qquad
+\E U_N\asymp N^{-\beta}.
 \]
-For exact \(p_j=c_pj^{-s}\), \(g_j=c_gj^{-b}\), and \(0<c_p<1\),
+For exact profiles,
+\begin{align*}
+\E V_N
+&\sim\Gamma(1-1/s)(c_pN)^{1/s},\\
+\E A_N
+&\sim
+\frac{c_g}{c_\lambda}
+\frac{\Gamma(1-\alpha)}{a-b+1}(c_pN)^\alpha,\\
+\E U_N
+&\sim
+\frac{c_g}{s}\Gamma(\beta)(c_pN)^{-\beta}.
+\end{align*}
+\end{proposition}
+
+\begin{proof}
+Since $\E I_{N,j}=1-(1-p_j)^N$,
 \[
-\sum_jg_j(1-p_j)^n
-\sim
-\frac{c_g}{s}\Gamma\!\left(\frac{b-1}{s}\right)
-(c_pn)^{-(b-1)/s}.
+\E V_N=\sum_jr_{N,j}.
+\]
+Apply Eq.~\eqref{eq:observed-sum} with $r=0$.
+
+Next,
+$\theta_j^2=g_j/\lambda_j\asymp j^{a-b}$. The source condition gives
+$-1<a-b<s-1$, so Eq.~\eqref{eq:observed-sum} with $r=a-b$ gives the claimed
+order and constant for $\E A_N$. Finally,
+\[
+\E U_N=\sum_jg_j(1-p_j)^N,
+\]
+and Eq.~\eqref{eq:missing-sum} applies.
+\end{proof}
+
+\begin{lemma}[Capacity overflow]
+\label{lem:capacity-overflow}
+There exists $c_m>0$ such that $N\le c_mm^s$ implies
+\[
+\Pr(V_N>m)\le e^{-cm}.
 \]
 \end{lemma}
 
 \begin{proof}
-Let \(J=n^{1/s}\).  For the upper bound,
-\((1-p_j)^n\le e^{-np_j}\).  The tail \(j>J\) is
-\(O(J^{1-b})\).  On the dyadic shell
-\(j\in(J/2^{\ell+1},J/2^\ell]\), the head contributes at most
-\[
-CJ^{1-b}2^{(b-1)\ell}e^{-c2^{s\ell}}.
-\]
-The series over \(\ell\) is finite.  For the lower bound, choose a fixed
-\(L\) such that \(np_j\le1/2\) for \(j\in[LJ,2LJ]\).  Bernoulli's inequality
-gives \((1-p_j)^n\ge1-np_j\ge1/2\), and that shell contributes
-\(\Omega(J^{1-b})\).
+The $I_{N,j}$ are independent Bernoulli variables and
+$\E V_N\le C N^{1/s}$. Choose $c_m$ so that $N\le c_mm^s$ implies
+$\E V_N\le m/2$. A multiplicative Chernoff bound gives the result, first for a
+finite coordinate truncation and then by monotone convergence.
+\end{proof}
 
-For the sharp constant, set \(J=(c_pn)^{1/s}\).  Uniformly on the relevant
-scale,
+The plain-output theorem needs control of $A_N$ on rare datasets.
+
+\begin{lemma}[Observed-norm moment]
+\label{lem:AN-moment}
+For every $q>1$ satisfying $q\alpha<1$,
 \[
-(1-c_pj^{-s})^n\to e^{-(J/j)^s}.
+\bigl(\E A_N^q\bigr)^{1/q}\le C_qN^\alpha.
 \]
-A Riemann-sum argument, with the preceding head and tail bounds providing
-domination, gives
+Such a $q$ exists because $\alpha<1$.
+\end{lemma}
+
+\begin{proof}
+Let $r=a-b$, so $\alpha=(r+1)/s$. By Minkowski's inequality,
 \[
-J^{b-1}\sum_jj^{-b}(1-c_pj^{-s})^n
-\longrightarrow
-\int_0^\infty u^{-b}e^{-u^{-s}}\,du.
+\|A_N\|_{L_q}
+\le\sum_j\theta_j^2\|I_{N,j}\|_{L_q}
+=\sum_j\theta_j^2r_{N,j}^{1/q}.
 \]
-The substitution \(t=u^{-s}\) evaluates the integral as
-\[
-\frac1s\Gamma\!\left(\frac{b-1}{s}\right).
-\]
-Multiplying by \(c_gJ^{1-b}\) proves the result.
+Set $J=N^{1/s}$. Since $r_{N,j}\lesssim\min\{1,Nj^{-s}\}$,
+\begin{align*}
+\|A_N\|_{L_q}
+&\lesssim
+\sum_{j\le J}j^r
++N^{1/q}\sum_{j>J}j^{r-s/q}.
+\end{align*}
+The second series converges because
+$r-s/q<-1$ is equivalent to $q\alpha<1$. Both terms have order
+$J^{r+1}=N^\alpha$.
 \end{proof}
 
 \section{Exact One-Hot Replay}
 
-Suppose each example chooses one coordinate
-\(J_i\sim(p_j)\) and equals
-\(X_i=E_iq_{J_i}e_{J_i}\).  Let
-\(C_j=\sum_{i=1}^n\1\{J_i=j\}\).
+Suppose each example chooses a single coordinate $J_i\sim(p_j)$ and equals
+$X_i=E_iq_{J_i}e_{J_i}$. Let
+$C_j=\sum_{i=1}^n\1\{J_i=j\}$.
 
 \begin{proposition}[Exact finite-epoch risk]
-Train a width-\(m\) model from zero by squared-loss SGD with step size \(\eta\)
-for \(K\) repeated passes over the same dataset.  Then
+\label{prop:supp-onehot-exact}
+Train a width-$m$ model from zero by squared-loss SGD with step $\eta$ for $K$
+repeated passes over the same dataset. Then
 \[
 \R_D
 =
@@ -205,597 +318,582 @@ and
 \end{proposition}
 
 \begin{proof}
-Let \(\delta_j=w_j-\theta_j\).  An example supported on \(j\) gives
-\[
-\delta_j^+=(1-\eta q_j^2)\delta_j.
-\]
-Coordinate updates commute, and coordinate \(j\) is updated \(KC_j\) times.
-The first expression follows from diagonal population risk.  Since
-\(C_j\sim{\rm Binomial}(n,p_j)\), the second follows from the binomial
-probability-generating function.
+For the residual $\delta_j=w_j-\theta_j$, a sample on coordinate $j$ gives
+$\delta_j^+=(1-\eta q_j^2)\delta_j$. Coordinate updates commute, so after $K$
+passes coordinate $j$ receives $KC_j$ multiplications. The expectation follows
+from the binomial probability-generating function.
 \end{proof}
 
-\begin{theorem}[Three-frontier law]
-Assume \(\sup_jp_j\le\bar p<1\) and
-\(0<\eta q_j^2\le\rho<1\).  Let
+\begin{theorem}[One-hot three-frontier law]
+\label{thm:supp-onehot-law}
+Suppose $\sup_jp_j<1$ and $0<\eta q_j^2\le\rho<1$. Then
 \[
+\E_D\R_D
+\asymp
+J_\star^{1-b},
+\qquad
 J_\star=\min\{m,(\eta nK)^{1/a},n^{1/s}\}.
-\]
-Then
-\[
-\E_D\R_D\asymp J_\star^{1-b}.
 \]
 Equivalently,
 \[
 \E_D\R_D
 \asymp
-m^{-(b-1)}
-+(\eta nK)^{-(b-1)/a}
-+n^{-(b-1)/s}.
+m^{-(b-1)}+(\eta nK)^{-(b-1)/a}+n^{-(b-1)/s}.
 \]
 \end{theorem}
 
 \begin{proof}
-Set \(\xi_j=\eta q_j^2\) and
+Put $u_j=\eta q_j^2$ and
+$r_j=1-(1-u_j)^{2K}$. Uniformly for $0<u_j\le\rho$,
 \[
-r_j=1-(1-\xi_j)^{2K}.
+r_j\asymp\min\{1,Ku_j\}.
 \]
-Uniformly for \(0<\xi_j\le\rho<1\),
-\[
-r_j\asymp\min\{1,K\xi_j\}.
-\]
-Thus
+Therefore
 \[
 np_jr_j
 \asymp
-\min\{np_j,\eta nKp_jq_j^2\}
+\min\{np_j,\eta nK\lambda_j\}
 \asymp
 \min\{nj^{-s},\eta nKj^{-a}\}.
 \]
-The exact survival factor is
-\((1-p_jr_j)^n\).  Since \(p_jr_j\le\bar p\), it is bounded above and below
-by exponentials with constant multiples of \(np_jr_j\) in the exponent.
-
-Write \(A=\eta nK\), \(B=n\), and
-\(J=\min\{m,A^{1/a},B^{1/s}\}\).  It remains to bound
+Because $p_jr_j\le\sup_jp_j<1$, the exact factor
+$(1-p_jr_j)^n$ is bounded above and below by exponentials with constant
+multiples of $np_jr_j$ in the exponent. It remains to estimate
 \[
-S=
-\sum_{j\le m}j^{-b}
-e^{-c\min\{Aj^{-a},Bj^{-s}\}}
-+\sum_{j>m}j^{-b}.
+S=\sum_{j\le m}j^{-b}
+\exp\{-c\min(Aj^{-a},Bj^{-s})\}
++\sum_{j>m}j^{-b},
 \]
-For \(j\le J\), \(A\ge J^a\) and \(B\ge J^s\), so, using \(a\ge s\),
+where $A=\eta nK$ and $B=n$. Let
+$J=\min\{m,A^{1/a},B^{1/s}\}$. For $j\le J$, since $a\ge s$,
 \[
-\min\{Aj^{-a},Bj^{-s}\}
-\ge
-\min\{(J/j)^a,(J/j)^s\}
-=
-(J/j)^s.
+\min\{Aj^{-a},Bj^{-s}\}\ge(J/j)^s.
 \]
-The dyadic-shell argument from the occupancy lemma bounds the core by
-\(O(J^{1-b})\); all indices above \(J\) contribute at most the same order.
-
-For the lower bound, if \(J=m\), the omitted tail is
-\(\Omega(J^{1-b})\).  Otherwise, either \(m<2J\), in which case the omitted
-tail again suffices, or the represented shell \([J,2J]\) has exponent bounded
-by a constant and contributes \(\Omega(J^{1-b})\).
-\end{proof}
-
-\section{Occupancy and Source Lemmas for Coactive Data}
-
-For \(N\) selected examples, define
-\[
-\cS_N=\bigcup_{i=1}^N{\rm supp}(X_i),\qquad
-V_N=|\cS_N|,\qquad
-A_N=\sum_{j\in\cS_N}\theta_j^2.
-\]
-
-\begin{lemma}[Singleton anchors]
-Let
-\[
-\pi_0=\prod_{k\ge1}(1-p_k).
-\]
-Then \(\pi_0>0\), and the probability that one example has support exactly
-\(\{j\}\) is
-\[
-\nu_j
-=
-p_j\prod_{k\ne j}(1-p_k)
-=
-\frac{\pi_0p_j}{1-p_j}
-\asymp p_j.
-\]
-For every \(r>0\), there is \(c_J>0\) such that, with
-\[
-J_N=\left\lfloor
-c_J\left(\frac{N}{\log(eN)}\right)^{1/s}
-\right\rfloor,
-\]
-\[
-\Pr\left(
-C_{N,j}\ge c_0Np_j\text{ for all }j\le J_N
-\right)\ge1-N^{-r},
-\]
-where \(C_{N,j}\) counts singleton-\(j\) examples.
-\end{lemma}
-
-\begin{proof}
-The product is positive because \(\sum_jp_j<\infty\) and
-\(\sup_jp_j<1\).  For fixed \(j\),
-\(C_{N,j}\sim{\rm Binomial}(N,\nu_j)\).  If \(j\le J_N\), then
-\[
-N\nu_j\ge cc_J^{-s}\log(eN).
-\]
-The multiplicative Chernoff inequality gives
-\[
-\Pr(C_{N,j}<N\nu_j/2)\le e^{-N\nu_j/8}.
-\]
-Choose \(c_J\) so the right side is at most \(N^{-(r+2)}\), and union bound
-over at most \(N\) indices.  Since \(\nu_j\asymp p_j\), the stated constant
-\(c_0\) follows.
-\end{proof}
-
-\begin{lemma}[Observed dictionary size]
-The indicators \(I_{N,j}=\1\{j\in\cS_N\}\) are independent and
-\[
-\E V_N
-=
-\sum_j[1-(1-p_j)^N]
-\asymp N^{1/s}.
-\]
-For exact \(p_j=c_pj^{-s}\),
-\[
-\E V_N
-\sim
-\Gamma(1-1/s)(c_pN)^{1/s}.
-\]
-There is \(c_m>0\) such that \(N\le c_mm^s\) implies
-\[
-\Pr(V_N>m)\le e^{-cm}.
-\]
-\end{lemma}
-
-\begin{proof}
-Each \(I_{N,j}\) is a function only of
-\(\{Z_{ij}\}_{i=1}^N\), so the indicators are independent across \(j\).
-Also
-\[
-\E I_{N,j}=1-(1-p_j)^N\asymp\min\{1,Np_j\}.
-\]
-Splitting at \(N^{1/s}\) proves the order.  For the exact constant, with
-\(J=(c_pN)^{1/s}\),
-\[
-\begin{aligned}
-&J^{-1}\sum_j[1-(1-c_pj^{-s})^N]\\
-&\qquad\longrightarrow
-\int_0^\infty(1-e^{-u^{-s}})\,du
-=
-\Gamma(1-1/s).
-\end{aligned}
-\]
-Choose \(c_m\) so that \(N\le c_mm^s\) implies
-\(\E V_N\le m/2\), then apply a multiplicative Chernoff bound.  Infinite
-sums are handled by finite truncation and monotone convergence.
-\end{proof}
-
-\begin{lemma}[Observed source norm]
-Under \(a-s+1<b<a+1\),
-\[
-\E A_N
-=
-\sum_j\theta_j^2[1-(1-p_j)^N]
-\asymp N^\alpha,
-\qquad
-\alpha=\frac{a-b+1}{s}.
-\]
-For exact
-\(p_j=c_pj^{-s}\), \(\lambda_j=c_\lambda j^{-a}\), and
-\(g_j=c_gj^{-b}\),
-\[
-\E A_N
-\sim
-\frac{c_g}{c_\lambda}
-\frac{\Gamma(1-\alpha)}{a-b+1}
-(c_pN)^\alpha.
-\]
-\end{lemma}
-
-\begin{proof}
-Because \(\theta_j^2=g_j/\lambda_j\asymp j^{a-b}\), set
-\(J=N^{1/s}\) and split:
-\[
-\sum_{j\le J}j^{a-b}
-\asymp J^{a-b+1},
-\]
-using \(b<a+1\), while
-\[
-N\sum_{j>J}j^{a-b-s}
-\asymp NJ^{a-b-s+1},
-\]
-using \(b>a-s+1\).  Both equal \(N^\alpha\).
-
-For exact profiles, rescaling by \(J=(c_pN)^{1/s}\) gives the integral
-\[
-\int_0^\infty
-u^{a-b}(1-e^{-u^{-s}})\,du.
-\]
-Letting \(t=u^{-s}\) and integrating by parts,
-\[
-\int_0^\infty
-u^{a-b}(1-e^{-u^{-s}})\,du
-=
-\frac{\Gamma(1-\alpha)}{a-b+1}.
-\]
+A dyadic-shell bound gives an $O(J^{1-b})$ contribution from the represented
+core, while all indices above $J$ contribute $O(J^{1-b})$. For the lower
+bound, if $J=m$, the omitted tail is $\Omega(J^{1-b})$. Otherwise, either
+$m<2J$ and the omitted tail again suffices, or the represented shell
+$[J,2J]$ has a bounded exponent and contributes $\Omega(J^{1-b})$.
 \end{proof}
 
 \section{Coactive Clipped Replay}
 
-Let the selected dictionary contain all features in \(\cS_N\), assuming
-\(V_N\le m\).  At update \(t\), sample \(I_t\) uniformly from
-\(\{1,\ldots,N\}\), set
-\[
-\gamma_i
-=
-\min\left\{\eta,\frac{\rho}{\|X_i\|^2}\right\},
-\qquad0<\rho\le1,
-\]
-where the second argument is interpreted as \(+\infty\) for a zero row.
-and update
-\[
-w_{t+1}
-=
-w_t-\gamma_{I_t}X_{I_t}
+For a fixed dataset $D_N$, the sparse dictionary stores $\cS_N$ when
+$V_N\le m$. On capacity overflow, the capacity-guarded algorithm outputs zero.
+Otherwise, at update $t$ it samples $I_t$ uniformly from $\{1,\ldots,N\}$ and
+uses
+\begin{align*}
+\gamma_i&=\min\left\{\eta,\frac{\rho}{\|X_i\|^2}\right\},\\
+w_{t+1}&=w_t-\gamma_{I_t}X_{I_t}
 (X_{I_t}^\top w_t-Y_{I_t}).
-\]
-Assume
-\(\eta\sup_jq_j^2\le\rho\), and output
-\[
-\bar w_T=\frac1T\sum_{t=0}^{T-1}w_t.
-\]
+\end{align*}
+where the second argument is $+\infty$ for a zero row. Assume
+$\eta\sup_jq_j^2\le\rho\le1$ and define
+$\bar w_T=T^{-1}\sum_{t=0}^{T-1}w_t$.
 
-Define the observable good event
+Let $C_{N,j}$ count examples with support exactly $\{j\}$. Since
+$\sum_jp_j<\infty$,
+\begin{align*}
+\pi_0&=\prod_{k\ge1}(1-p_k)>0,\\
+\nu_j:=\Pr\{{\rm supp}(X)=\{j\}\}
+&=\frac{\pi_0p_j}{1-p_j}\asymp p_j.
+\end{align*}
+Fix $0<\kappa\le\pi_0/2$ and define
 \[
-\mathcal G_N
-=
-\{V_N\le m\}
-\cap
-\{C_{N,j}\ge c_0Np_j\text{ for every }j\le J_N\}.
+\cA_N=\{j:C_{N,j}\ge\kappa Np_j\},
+\qquad
+\widehat w_T=P_{\cA_N}\bar w_T.
 \]
-The support-certified algorithm returns zero if this event fails.
 
 \begin{lemma}[Pathwise contraction]
-Let \(\delta_t=w_t-\theta_{\cS_N}\).  Every update satisfies
+\label{lem:pathwise}
+Let $\delta_t=w_t-\theta_{\cS_N}$. Every update satisfies
 \[
 \|\delta_{t+1}\|^2
 \le
-\|\delta_t\|^2-\gamma_{I_t}
-(X_{I_t}^\top\delta_t)^2.
+\|\delta_t\|^2-\gamma_{I_t}(X_{I_t}^\top\delta_t)^2.
 \]
-In particular,
-\[
-\|\delta_t\|\le\|\delta_0\|=\sqrt{A_N}
-\]
-for every update path.
+Hence $\|\delta_t\|\le\sqrt{A_N}$ along every replay path.
 \end{lemma}
 
 \begin{proof}
-For a row \(x\),
+For a row $x$,
+$\delta^+=(I-\gamma xx^\top)\delta$, and therefore
 \[
-\delta^+=(I-\gamma xx^\top)\delta.
+\|\delta^+\|^2
+=\|\delta\|^2-
+\gamma(2-\gamma\|x\|^2)(x^\top\delta)^2.
+\]
+The clipping rule ensures $\gamma\|x\|^2\le\rho\le1$.
+\end{proof}
+
+\begin{lemma}[Singleton-weighted energy inequality]
+\label{lem:energy}
+Conditioned on any fixed dataset with $V_N\le m$,
+\begin{equation}
+\frac{\eta}{N}
+\sum_{t=0}^{T-1}\E_{\rm sgd}
+\sum_jC_{N,j}q_j^2\delta_{t,j}^2
+\le A_N.
+\label{eq:supp-energy}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Average Lemma~\ref{lem:pathwise} over the next uniformly sampled row. All
+terms are nonnegative, so retain only singleton rows. A singleton-$j$ row is
+$\pm q_je_j$ and is not clipped because $\eta q_j^2\le\rho$. Thus
+\[
+\E_t\|\delta_{t+1}\|^2
+\le\|\delta_t\|^2-
+\frac\eta N\sum_jC_{N,j}q_j^2\delta_{t,j}^2.
+\]
+Telescope and use $\|\delta_0\|^2=A_N$.
+\end{proof}
+
+\begin{lemma}[Energy outside the anchor set]
+\label{lem:anchor-tail}
+There is $c>0$ such that
+\[
+\E\sum_{j\notin\cA_N}g_j
+\le C N^{-\beta}.
+\]
+\end{lemma}
+
+\begin{proof}
+For fixed $j$, $C_{N,j}\sim{\rm Binomial}(N,\nu_j)$ with
+$\nu_j\ge\pi_0p_j$. Since $\kappa\le\pi_0/2$, the anchor threshold is at most
+half the mean. A multiplicative Chernoff bound gives
+\[
+\Pr(j\notin\cA_N)\le e^{-cNp_j}.
 \]
 Therefore
 \[
-\|\delta^+\|^2
-=
-\|\delta\|^2
--\gamma(2-\gamma\|x\|^2)(x^\top\delta)^2.
+\E\sum_{j\notin\cA_N}g_j
+\le C\sum_jj^{-b}e^{-cNj^{-s}}
+\asymp N^{-\beta}
 \]
-By construction, \(\gamma\|x\|^2\le\rho\le1\), so
-\(2-\gamma\|x\|^2\ge1\).
+by the same rescaling as Lemma~\ref{lem:master-sum}.
 \end{proof}
 
-\begin{lemma}[Certified curvature]
-Condition on \(D_N\in\mathcal G_N\).  Then
+\begin{theorem}[Sharp anchor-masked coactive replay]
+\label{thm:supp-anchor}
+Suppose $N\le c_mm^s$. The capacity-guarded, anchor-masked output satisfies
 \[
-\E_t\|\delta_{t+1}\|^2
-\le
-\|\delta_t\|^2
--c\eta\sum_{j\le J_N}\lambda_j\delta_{t,j}^2.
-\]
-\end{lemma}
-
-\begin{proof}
-Average the contraction inequality over a uniform choice among the \(N\)
-training rows.  All contributions are nonnegative, so retain only singleton
-rows.  A singleton-\(j\) row is \(\pm q_je_j\).  It is not clipped because
-\(\eta q_j^2\le\rho\), and therefore contributes
-\(\eta q_j^2\delta_j^2\).  Consequently,
-\[
-\frac1N\sum_{i=1}^N
-\gamma_i(X_i^\top\delta)^2
-\ge
-\frac\eta N\sum_{j\le J_N}
-C_{N,j}q_j^2\delta_j^2.
-\]
-On \(\mathcal G_N\),
-\(C_{N,j}\ge c_0Np_j\), and
-\(p_jq_j^2=\lambda_j\).
-\end{proof}
-
-\begin{theorem}[Conditional coactive replay bound]
-Condition on \(D_N\in\mathcal G_N\).  Then
-\[
-\E_{\rm sgd}\R(\bar w_T)
-\le
-\frac{A_N}{c\eta T}
-+C\lambda_{J_N+1}A_N
-+\sum_{j\notin\cS_N}g_j.
-\]
-\end{theorem}
-
-\begin{proof}
-Telescope the certified-curvature inequality:
-\[
-c\eta
-\sum_{t=0}^{T-1}
-\E_{\rm sgd}
-\sum_{j\le J_N}\lambda_j\delta_{t,j}^2
-\le
-\|\delta_0\|^2=A_N.
-\]
-Jensen's inequality gives
-\[
-\E_{\rm sgd}
-\sum_{j\le J_N}\lambda_j\bar\delta_{T,j}^2
-\le
-\frac{A_N}{c\eta T}.
-\]
-Pathwise contraction implies
-\[
-\|\bar\delta_T\|
-\le
-\frac1T\sum_{t<T}\|\delta_t\|
-\le\sqrt{A_N}.
-\]
-Since the spectrum is nonincreasing up to constants,
-\[
-\sum_{\substack{j>J_N\\j\in\cS_N}}
-\lambda_j\bar\delta_{T,j}^2
-\le
-C\lambda_{J_N+1}A_N.
-\]
-The predictor is zero outside \(\cS_N\), whose exact risk contribution is
-\(\sum_{j\notin\cS_N}g_j\).
-\end{proof}
-
-\begin{theorem}[Expected coactive replay bound]
-Fix \(r>\beta\), choose \(c_J\) for failure exponent \(r\), and suppose
-\(N\le c_mm^s\).  The support-certified algorithm satisfies
-\[
-\E\R(\bar w_T)
-\le
-C\left[
-\frac{N^\alpha}{\eta T}
-+\{\log(eN)\}^{a/s}N^{-\beta}
-+N^{-r}+e^{-cm}
+\E\R(\widehat w_T)
+\le C\left[
+\frac{N^\alpha}{\eta T}+N^{-\beta}+e^{-cm}
 \right].
 \]
 \end{theorem}
 
 \begin{proof}
-On \(\mathcal G_N\), average the conditional bound over the dataset.
-The observed-source lemma gives
+Condition on a fixed dataset with $V_N\le m$. For $j\in\cA_N$,
+$C_{N,j}\ge\kappa Np_j$, so Eq.~\eqref{eq:supp-energy} implies
 \[
-\E A_N\lesssim N^\alpha.
+\sum_{t<T}\E_{\rm sgd}
+\sum_{j\in\cA_N}\lambda_j\delta_{t,j}^2
+\le\frac{A_N}{\kappa\eta}.
 \]
-Moreover,
+By Jensen,
 \[
-\lambda_{J_N+1}\E A_N
-\lesssim
-\left(\frac{N}{\log(eN)}\right)^{-a/s}N^\alpha
-=
-\{\log(eN)\}^{a/s}N^{-\beta},
+\E_{\rm sgd}
+\sum_{j\in\cA_N}\lambda_j
+(\bar w_{T,j}-\theta_j)^2
+\le\frac{A_N}{\kappa\eta T}.
 \]
-because \(\alpha+\beta=a/s\).  The unseen-feature lemma contributes
-\(O(N^{-\beta})\).
+The masked coordinates contribute exactly
+$\sum_{j\notin\cA_N}g_j$. Average over the dataset, apply
+Proposition~\ref{prop:supp-occupancy} and
+Lemma~\ref{lem:anchor-tail}, and add the capacity-overflow contribution using
+Lemma~\ref{lem:capacity-overflow}. The zero predictor has finite risk
+$\sum_jg_j$.
+\end{proof}
 
-On \(\mathcal G_N^c\), the certified algorithm outputs zero, whose risk is
-\(\sum_jg_j<\infty\).  The singleton and dictionary lemmas give
+We now remove the anchor mask. The analysis uses simultaneous singleton
+coverage only as a proof event; the algorithm itself is unchanged and never
+aborts because of singleton counts.
+
+\begin{lemma}[High-coverage core]
+\label{lem:core-event}
+For every $R>0$, there is a sufficiently small $c_J>0$ such that, with
 \[
-\Pr(\mathcal G_N^c)\le N^{-r}+e^{-cm}.
+J_N=\left\lfloor c_J
+\left(\frac{N}{\log(eN)}\right)^{1/s}\right\rfloor,
 \]
+the event
+\[
+\mathcal G_N=\{C_{N,j}\ge\kappa Np_j\text{ for every }j\le J_N\}
+\]
+satisfies $\Pr(\mathcal G_N^c)\le N^{-R}$.
+\end{lemma}
+
+\begin{proof}
+For $j\le J_N$, the mean singleton count obeys
+$N\nu_j\ge cN J_N^{-s}\ge c c_J^{-s}\log(eN)$. Chernoff gives
+$\Pr(C_{N,j}<\kappa Np_j)\le N^{-R-2}$ after decreasing $c_J$, and a union
+bound over at most $N$ coordinates completes the proof.
+\end{proof}
+
+\begin{theorem}[Plain Polyak average]
+\label{thm:supp-plain}
+Suppose $N\le c_mm^s$. The capacity-guarded plain Polyak average, with no
+anchor mask and no singleton-support abort, satisfies
+\[
+\E\R(\bar w_T)
+\le C\left[
+\frac{N^\alpha}{\eta T}
++\{\log(eN)\}^{a/s}N^{-\beta}
++e^{-cm}
+\right].
+\]
+\end{theorem}
+
+\begin{proof}
+Condition on $V_N\le m$. On $\mathcal G_N$, repeat the proof of
+Theorem~\ref{thm:supp-anchor} on coordinates $j\le J_N$ to obtain core risk
+$A_N/(\kappa\eta T)$. For represented coordinates above $J_N$, pathwise
+contraction gives $\|\bar\delta_T\|^2\le A_N$, so monotonicity of the spectrum
+gives
+\[
+\sum_{\substack{j>J_N\\j\in\cS_N}}
+\lambda_j\bar\delta_{T,j}^2
+\le C\lambda_{J_N+1}A_N.
+\]
+The unobserved coordinates contribute $U_N$. Hence, on $\mathcal G_N$,
+\[
+\E_{\rm sgd}\R(\bar w_T)
+\le
+\frac{A_N}{\kappa\eta T}
++C\lambda_{J_N+1}A_N+U_N.
+\]
+After expectation,
+\begin{align*}
+\lambda_{J_N+1}\E A_N
+&\lesssim
+\left(\frac{N}{\log(eN)}\right)^{-a/s}N^\alpha\\
+&=\{\log(eN)\}^{a/s}N^{-\beta}.
+\end{align*}
+
+On $\mathcal G_N^c$, Lemma~\ref{lem:pathwise} implies
+$\R(\bar w_T)\le C(A_N+1)$. Choose $q>1$ with $q\alpha<1$. By
+Lemma~\ref{lem:AN-moment} and H\"older,
+\[
+\E[(A_N+1)\1_{\mathcal G_N^c}]
+\le C(N^\alpha+1)\Pr(\mathcal G_N^c)^{1-1/q}.
+\]
+Lemma~\ref{lem:core-event} permits an arbitrarily large polynomial exponent
+$R$, so this term is $O(N^{-\beta})$. Finally add the capacity-overflow
+probability from Lemma~\ref{lem:capacity-overflow}.
 \end{proof}
 
 \begin{corollary}[All-data saturation]
-Set \(N=n\), \(T=nK\), and \(m\gtrsim n^{1/s}\).  Then
+\label{cor:supp-alldata}
+Set $N=n$, $T=nK$, and $m\gtrsim n^{1/s}$. Then
 \[
-\E\R(\bar w_{nK})
+\E\R(\widehat w_{nK})
 \lesssim
-\frac{n^{\alpha-1}}{\eta K}
-+\{\log(en)\}^{a/s}n^{-\beta}.
+\frac{n^{\alpha-1}}{\eta K}+n^{-\beta}.
 \]
-Thus
-\[
-K=\widetilde O(\eta^{-1}n^{a/s-1})
-\]
-suffices to reach the coverage floor up to logarithms.
+Therefore $K=O(\eta^{-1}n^{a/s-1})$ suffices to reach the coverage floor.
+The plain average has the same exponent with the logarithmic factor from
+Theorem~\ref{thm:supp-plain}.
 \end{corollary}
 
+\begin{proof}
+Balance the two terms. Since $\alpha+\beta=a/s$,
+\[
+\frac{n^{\alpha-1}}{\eta K}\lesssim n^{-\beta}
+\quad\Longleftrightarrow\quad
+K\gtrsim\eta^{-1}n^{\alpha+\beta-1}
+=\eta^{-1}n^{a/s-1}.
+\]
+\end{proof}
+
 \begin{corollary}[Frontier-matched schedule]
+\label{cor:supp-full}
 Let
 \[
 J_\star=\min\{m,n^{1/s},(\eta T)^{1/a}\}
 \]
-and select
+and choose
 \[
-N_\star=
-\left\lfloor
+N_\star=\left\lfloor
 c\min\{n,m^s,(\eta T)^{s/a}\}
-\right\rfloor
+\right\rfloor.
 \]
-unique examples.  Then, for \(J_\star\) larger than a fixed constant,
+For $J_\star$ larger than a fixed constant,
 \[
-\E\R(\bar w_T)
-\le
-C\{\log(eJ_\star)\}^{a/s}J_\star^{1-b}.
+\E\R(\widehat w_T)
+\le C J_\star^{1-b}.
 \]
 Equivalently,
 \[
-\E\R(\bar w_T)
-=
-\widetilde O\left(
-m^{-(b-1)}
-+(\eta T)^{-(b-1)/a}
-+n^{-(b-1)/s}
+\E\R(\widehat w_T)
+=O\left(
+m^{-(b-1)}+(\eta T)^{-(b-1)/a}+n^{-(b-1)/s}
 \right).
 \]
 \end{corollary}
 
 \begin{proof}
-The choice of \(N_\star\) guarantees both
-\(N_\star\lesssim m^s\) and
-\(\eta T\gtrsim N_\star^{a/s}\).  Hence
+The choice of $N_\star$ guarantees both $N_\star\lesssim m^s$ and
+$\eta T\gtrsim N_\star^{a/s}$. Therefore
 \[
 \frac{N_\star^\alpha}{\eta T}
-\lesssim
-N_\star^{\alpha-a/s}
-=
-N_\star^{-\beta}.
+\lesssim N_\star^{\alpha-a/s}
+=N_\star^{-\beta}.
 \]
-The logarithmic term has the same power.  Finally
-\(N_\star^{1/s}\asymp J_\star\), so
-\(N_\star^{-\beta}=J_\star^{1-b}\).  Since \(1-b<0\), the largest of the
-three frontier terms is equivalent within a factor three to their sum.
+Moreover $N_\star^{1/s}\asymp J_\star$, so
+$N_\star^{-\beta}=J_\star^{1-b}$. Since $1-b<0$, the largest of the three
+frontier terms is equivalent within a factor three to their sum.
 \end{proof}
 
-\section{Additional Experimental Details}
+\section{Budgeted Acquisition and Replay}
 
-\paragraph{Generation.}
-For ambient dimension \(d\), we use
+The main paper states a budgeted version of the frontier-matched schedule. We
+record the argument explicitly. Let $c_{\rm d}$ be the cost of acquiring one
+unique example, $c_{\rm u}$ the cost of one update, and let
+$c_{\rm d}N+c_{\rm u}T\le B$. Define
 \[
-p_j=\frac{\mu}{\zeta(s)}j^{-s},\qquad
-\lambda_j=j^{-a},\qquad
-q_j^2=\frac{\lambda_j}{p_j},\qquad
-g_j=j^{-b}.
+N_B=\left\lfloor c_0\min\left\{
+ n,m^s,(\eta B/c_{\rm u})^{s/a},B/c_{\rm d}
+\right\}\right\rfloor
 \]
-Teacher signs are independent Rademacher variables.  We draw each coordinate's
-occupancy as a binomial random variable and then choose that many rows without
-replacement.  This generates the independent Bernoulli design exactly while
-using \(O(d+{\rm nnz})\) rather than \(O(nd)\) memory.
+for a sufficiently small numerical $c_0$, and set
+$T_B=\lfloor(B-c_{\rm d}N_B)/c_{\rm u}\rfloor$.
 
-Risk within the first \(d\) coordinates is computed exactly from the
-coefficient error.  We add the analytic unrepresented tail
-\(\zeta(b,d+1)\).  The unseen-feature floor is
+\begin{corollary}[Budgeted frontier matching]
+For $N_B$ above a fixed constant,
+\begin{align*}
+\E\R(\widehat w_{T_B})=O\bigl(&m^{-(b-1)}+n^{-(b-1)/s}
+ +(\eta B/c_{\rm u})^{-(b-1)/a}\\
+&+(B/c_{\rm d})^{-(b-1)/s}+e^{-cm}\bigr).
+\end{align*}
+\end{corollary}
+
+\begin{proof}
+Choose $c_0\le1/2$. Since $N_B\le c_0B/c_{\rm d}$,
+$T_B\ge B/(2c_{\rm u})-1$, and hence $T_B\asymp B/c_{\rm u}$. Moreover,
+\[
+N_B^{1/s}\lesssim
+\min\left\{n^{1/s},m,(\eta B/c_{\rm u})^{1/a},
+(B/c_{\rm d})^{1/s}\right\}.
+\]
+Apply Corollary~\ref{cor:supp-full} with $T=T_B$ and the selected subset size
+$N_B$. The optimization contribution obeys
+$N_B^\alpha/(\eta T_B)\lesssim N_B^{-\beta}$ because
+$N_B\lesssim(\eta B/c_{\rm u})^{s/a}$ and
+$\alpha+\beta=a/s$. Converting $N_B^{-\beta}$ to the maximum of the four
+frontier tails gives the stated sum up to a constant factor.
+\end{proof}
+
+When $n$ and $m$ are nonbinding and $a>s$, the acquisition constraint
+$N_B\le B/c_{\rm d}$ is asymptotically inactive, so
+$N_B\asymp B^{s/a}$, $T_B\asymp B$, and
+$K_B=T_B/N_B\asymp B^{1-s/a}$. For $a=s$, fresh data and updates must instead
+receive constant fractions of the budget. In either case the allocation
+exponent is independent of $b$, for the same reason as the saturation epoch:
+$b$ converts learned rank into risk but does not determine the rank at which
+optimization and coverage meet.
+
+
+\section{Frontier Elasticities}
+
+For completeness, let
+\[
+L=C_m m^{-\delta}+C_T(\eta T)^{-\gamma}+C_NN^{-\beta}.
+\]
+Direct differentiation gives
+\[
+-\frac{\partial\log L}{\partial\log m}
+=\delta\frac{C_m m^{-\delta}}{L},\quad
+-\frac{\partial\log L}{\partial\log T}
+=\gamma\frac{C_T(\eta T)^{-\gamma}}{L},
+\]
+and the analogous identity for $N$. Dividing by the respective
+exponents and summing gives the simplex identity stated in the main paper.
+Centered finite differences on a logarithmic grid consistently estimate these
+elasticities whenever the scaling proxy is locally accurate. The
+identity also extends immediately to additional additive bottlenecks:
+the normalized local elasticities form a simplex whose coordinates are
+the corresponding fractions of predicted risk.
+
+\section{Input-Only Saturation Estimation}
+
+For exact profiles,
+\[
+p_j=c_pj^{-s},
+\qquad
+\lambda_j=c_\lambda j^{-a}.
+\]
+Eliminating $j$ gives
+\begin{equation}
+q_j^2=\frac{\lambda_j}{p_j}
+=c_\lambda c_p^{-a/s}p_j^{a/s-1}.
+\label{eq:supp-q-p}
+\end{equation}
+At the coverage rank $p_j\asymp1/n$. A feature near this rank appears a
+constant number of times per epoch and requires $K\eta q_j^2\asymp1$ to be
+optimized. Consequently,
+\[
+K_{\rm sat}\asymp
+\frac{1}{\eta q^2(p=1/n)}
+=\eta^{-1}c_\lambda^{-1}c_p^{a/s}n^{a/s-1}.
+\]
+
+The empirical estimator uses only the design matrix. Let $M_j$ be the number
+of occurrences of feature $j$ and let
+\[
+\widehat p_j=M_j/n,
+\qquad
+\widehat q_j^2=\frac{1}{M_j}
+\sum_{i:Z_{ij}=1}X_{ij}^2.
+\]
+For coordinates with $M_j\ge r_{\min}$, fit
+\[
+\log\widehat q_j^2=\widehat c+\widehat r\log\widehat p_j
+\]
+and output
+\[
+\widehat K_{\rm sat}
+=\eta^{-1}e^{-\widehat c}n^{\widehat r}.
+\]
+The experiments use $r_{\min}=8$. This threshold trades the number of fitted
+coordinates against small-count noise. A uniform plug-in theorem for an
+empirical anchor mask or for the stopping estimator would require additional
+control of feature selection and is not claimed here.
+
+\section{Experimental Details}
+
+\subsection{Sparse design generation}
+
+For ambient dimension $d$, the experiments use
+\begin{align*}
+p_j&=\frac\mu{\zeta(s)}j^{-s},
+&\lambda_j&=j^{-a},\\
+q_j^2&=\frac{\lambda_j}{p_j},
+&g_j&=j^{-b}.
+\end{align*}
+For each coordinate, the code first draws its
+${\rm Binomial}(n,p_j)$ occupancy and then chooses that many rows uniformly
+without replacement. This is exactly distributionally equivalent to drawing
+all $nd$ independent Bernoulli masks, while requiring $O(d+{\rm nnz})$ memory.
+Rademacher signs are then assigned to nonzero entries. The teacher is
+$\theta_j=\pm\sqrt{g_j/\lambda_j}$ with independent signs.
+
+Population risk in the first $d$ coordinates is computed exactly from the
+coefficient error. Every reported value adds the analytic target tail
+$\zeta(b,d+1)$. The exact unseen-feature floor is
 \[
 \sum_{j\le d}g_j(1-p_j)^n+\zeta(b,d+1).
 \]
 
-\paragraph{Optimization.}
-The primary method samples with replacement and uses
+\subsection{Optimization protocols}
+
+The primary protocol samples stored rows with replacement and uses
 \[
 \gamma_i=\min\{\eta,0.9/\|X_i\|^2\}.
 \]
-We record both the last iterate and the uniform average of all pre-update
-iterates.  Cyclic and independently reshuffled protocols are used as
-robustness checks.  No support certificate is applied in any experiment.
+We record both the last iterate and the uniform average of pre-update iterates.
+Cyclic and independently reshuffled protocols are robustness checks. No
+support-abort event is used in any experiment. The anchor experiment masks only
+the final averaged vector, with $\kappa=\pi_0/2$ and
+$\pi_0=\prod_{j\le d}(1-p_j)$.
 
-\paragraph{Default sweep.}
-We use
-\[
-(s,a,b,\mu,\eta)=(1.5,2,2,1,0.2),
-\]
-\(d=4096\),
-\(n\in\{256,512,\ldots,8192\}\), and
-\(K\in\{1,2,\ldots,512\}\), with five seeds.  The fitted two-term law for the
-averaged iterate is
+\subsection{Primary and robustness sweeps}
+
+The primary sweep uses
+$(s,a,b,\mu,\eta)=(1.5,2,2,1,0.2)$,
+$d=4096$, $n\in\{256,512,\ldots,8192\}$, and
+$K\in\{1,2,\ldots,512\}$ on a logarithmic grid, with five seeds. The fitted
+fixed-exponent law for the averaged iterate is
 \[
 0.916(\eta nK)^{-1/2}+1.125n^{-2/3},
 \]
-with \(R^2=0.9805\) and median relative error \(0.0954\).
-For the last iterate, \(R^2=0.9759\) with median relative error \(0.0997\).
+with $R^2=0.9805$ and median relative error $0.0954$. The corresponding
+last-iterate values are $R^2=0.9759$ and median relative error $0.0997$.
 
-\paragraph{Progressive schedule.}
-For \(T=2^{12},\ldots,2^{20}\), choose
-\(N=\lfloor(\eta T)^{s/a}\rfloor\), \(K=\lfloor T/N\rfloor\),
-and \(d=8192\).  The fitted slopes are \(-0.5016\) for the averaged iterate
-and \(-0.4970\) for the last iterate, versus the prediction \(-0.5\).
+The progressive sweep uses target updates $T=2^{12},\ldots,2^{20}$,
+$N=\lfloor(\eta T)^{s/a}\rfloor$, and $K=\lfloor T/N\rfloor$. The measured
+slopes are $-0.5016$ for the average and $-0.4970$ for the last iterate. The
+fixed-compute sweep holds $T=2^{18}$ and varies
+$N\in\{256,512,\ldots,32768\}$. The last-iterate risk falls from $0.04302$ to
+$0.00335$, a factor of $12.84$.
 
-\paragraph{Fixed compute.}
-At \(T=2^{18}\), we vary
-\(N\in\{256,512,\ldots,32768\}\) and set \(K=T/N\).  Last-iterate risk falls
-from \(0.04302\) to \(0.00335\), a factor \(12.84\), as the unique-data
-fraction increases.
+The source sweep holds $(a,s)=(2,1.5)$ and tests
+$b\in\{1.4,1.7,2.0,2.4\}$. The measured coverage slopes are
+$(-0.2633,-0.4580,-0.6532,-0.9150)$, compared with
+$(-0.2667,-0.4667,-0.6667,-0.9333)$. The spectrum grid additionally tests
+$(a,s,b)=(2,1.5,2),(2.4,1.5,2),(2.5,2,2.5)$; fixed-exponent two-term fits have
+$R^2=(0.989,0.996,0.993)$.
 
-\paragraph{Source sweep.}
-At \((a,s)=(2,1.5)\), \(K=512\), and \(d=8192\), the measured averaged-risk
-coverage slopes for
-\(b=(1.4,1.7,2.0,2.4)\) are
-\((-0.2633,-0.4580,-0.6532,-0.9150)\), compared with
-\((-0.2667,-0.4667,-0.6667,-0.9333)\).
+The clipping stress test sweeps $\mu\in\{1,1.75,2.25\}$ and
+$\eta\in\{0.2,0.4,0.8,1.2\}$. At $(\mu,\eta)=(2.25,1.2)$, unclipped
+reshuffling has mean risk $1.16\times10^{85}$ by epoch four and later
+overflows. Clipping reaches $0.00708$ by epoch 64; the coverage floor is
+$0.00618$.
 
-\paragraph{Spectrum-grid robustness.}
-We additionally test
-\((a,s,b)=(2,1.5,2),(2.4,1.5,2),(2.5,2,2.5)\).
-Fixed-exponent two-term fits have averaged-risk
-\(R^2=(0.989,0.996,0.993)\).  The measured optimization slopes are
-\((-0.457,-0.403,-0.545)\), versus
-\((-0.500,-0.417,-0.600)\); measured coverage slopes are
-\((-0.656,-0.613,-0.788)\), versus
-\((-0.667,-0.667,-0.750)\).
+\subsection{Capacity sweep}
 
-\paragraph{Clipping stress test.}
-We sweep
-\(\mu\in\{1,1.75,2.25\}\) and
-\(\eta\in\{0.2,0.4,0.8,1.2\}\).
-At \((\mu,\eta)=(2.25,1.2)\), unclipped reshuffling reaches mean risk
-\(1.16\times10^{85}\) by epoch four and subsequently overflows.  Clipping
-reaches \(0.00708\) by epoch 64; the coverage floor is \(0.00618\).
+To isolate the model frontier, we fix
+$n=32768$, $K=256$, $(s,a,b)=(1.5,2,2)$, and vary
+$m\in\{64,128,256,512,1024,2048,4096\}$. The generator treats $m$ as the
+representable ambient rank and the risk adds the exact tail beyond $m$. Across
+five seeds, fitting the first three widths gives average-risk slope $-0.9911$;
+the exact target-tail slope over the same points is $-0.9958$. The transition
+to coverage-limited behavior occurs around $m=1024$.
 
-\begin{figure}[t]
+\subsection{Stopping-rule sweep}
+
+We test three configurations:
+\[
+(a,s,b)\in\{(2,1.5,2),(2.4,1.5,2),(2.5,2,2.5)\},
+\]
+with $n\in\{256,512,1024,2048,4096,8192\}$, $d=8192$, and five seeds. The
+measured saturation is the first log-interpolated epoch for which averaged risk
+is at most $1.25$ times the exact coverage floor. Features must appear at least
+eight times to enter the input-only regression.
+
+\begin{table}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/fixed_compute.pdf}
-\caption{At fixed total updates, more unique data lowers the coverage floor
-and improves the final risk.}
-\end{figure}
+\caption{Input-only saturation diagnostics. ``True $r$'' is $a/s-1$; the
+factor column is the median of
+$\max\{\widehat K/K,K/\widehat K\}$.}
+\begin{tabular}{lccc}
+\toprule
+Configuration & true $r$ & mean $\widehat r$ & factor error \\
+\midrule
+$(2,1.5,2)$ & 0.333 & 0.349 & 1.68 \\
+$(2.4,1.5,2)$ & 0.600 & 0.629 & 1.49 \\
+$(2.5,2,2.5)$ & 0.250 & 0.257 & 1.55 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/source_exponents.pdf}
-\caption{Predicted versus measured coverage slopes as the source exponent
-\(b\) varies.}
-\end{figure}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/clipping_stress.pdf}
-\caption{Clipping prevents instability under high coactivation and an
-aggressive base step size.  Unclipped values at or above \(10^{300}\) are capped for display; subsequent updates overflow.}
-\end{figure}
+The complete release now contains 795 independent training runs and 5,400
+recorded population-risk checkpoints.
 
 \section{Reproducibility}
 
 The repository contains:
-
 \begin{itemize}
-\item \url{experiments/exact_pilots.py}, evaluating the one-hot and
-singleton-filtered formulas without Monte Carlo;
-\item \url{experiments/multi_active_replay.py}, generating the sparse
-multi-active data and running all replay sweeps;
-\item \url{experiments/plot_results.py}, recreating every paper figure;
-\item checked-in CSV files and a machine-readable summary under
-\url{experiments/results/}.
+\item \texttt{experiments/exact\_pilots.py}, evaluating the exact one-hot and
+singleton-filtered formulas;
+\item \texttt{experiments/multi\_active\_replay.py}, generating the primary
+multi-active sweeps;
+\item \texttt{experiments/frontier\_diagnostics.py}, running the width and
+input-only stopping experiments;
+\item \texttt{experiments/plot\_results.py}, regenerating all paper figures;
+\item \texttt{experiments/validate\_results.py}, checking result schemas,
+counts, fitted slopes, and reported summary values.
 \end{itemize}
 
-A quick validation takes seconds on a laptop:
-\begin{verbatim}
-python experiments/multi_active_replay.py
-  --suite quick
-\end{verbatim}
-The complete checked-in sweep is reproduced with:
-\begin{verbatim}
-python experiments/multi_active_replay.py
-  --suite full
-python experiments/plot_results.py
-\end{verbatim}
+The principal commands are \texttt{pip install -r requirements.txt},
+\texttt{make full}, running
+\path{experiments/frontier_diagnostics.py}, and then
+\texttt{make validate} and \texttt{make figures}.
+All random seeds, dimensions, spectral exponents, epoch grids, and fitting
+windows are specified in the scripts and checked-in CSV files.
 
 \end{document}

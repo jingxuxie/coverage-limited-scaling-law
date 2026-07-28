@@ -1,0 +1,52 @@
+{
+  "capacity": {
+    "predicted_slope": -1.0,
+    "measured_average_slope": -0.9911301351093256,
+    "measured_tail_slope": -0.9957803456244372,
+    "transition_width": 1024
+  },
+  "stopping_rule": {
+    "default": {
+      "a": 2.0,
+      "s": 1.5,
+      "b": 2.0,
+      "predicted_saturation_exponent": 0.33333333333333326,
+      "mean_estimated_exponent": 0.3494249532070366,
+      "standard_error_estimated_exponent": 0.0038243005134682446,
+      "predicted_epoch_slope": 0.3330427273316453,
+      "measured_epoch_slope": 0.3747238044351625,
+      "median_epoch_factor_error": 1.6797001869345443,
+      "predicted_coverage_slope": -0.6666666666666666,
+      "plain_coverage_slope": -0.6539856532295878,
+      "anchor_coverage_slope": -0.5973010265008727
+    },
+    "slow-tail": {
+      "a": 2.4,
+      "s": 1.5,
+      "b": 2.0,
+      "predicted_saturation_exponent": 0.5999999999999999,
+      "mean_estimated_exponent": 0.6289649157726661,
+      "standard_error_estimated_exponent": 0.006883740924242839,
+      "predicted_epoch_slope": 0.5994769091969604,
+      "measured_epoch_slope": 0.6680095442029912,
+      "median_epoch_factor_error": 1.4893500882388917,
+      "predicted_coverage_slope": -0.6666666666666666,
+      "plain_coverage_slope": -0.6501602072949828,
+      "anchor_coverage_slope": -0.5967133829018346
+    },
+    "steep-frequency": {
+      "a": 2.5,
+      "s": 2.0,
+      "b": 2.5,
+      "predicted_saturation_exponent": 0.25,
+      "mean_estimated_exponent": 0.2569090276683305,
+      "standard_error_estimated_exponent": 0.0016967662152390724,
+      "predicted_epoch_slope": 0.26045097795457534,
+      "measured_epoch_slope": 0.328700977401837,
+      "median_epoch_factor_error": 1.5549055551325952,
+      "predicted_coverage_slope": -0.75,
+      "plain_coverage_slope": -0.7641543191851617,
+      "anchor_coverage_slope": -0.8234553116681597
+    }
+  }
+}

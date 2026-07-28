@@ -1,0 +1,228 @@
+name: publish final clean AAAI revision
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]' && github.event.pull_request.head.ref == 'agent/expand-aaai-paper'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download verified source-complete package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/8677188195/zip \
+            -o /tmp/artifact.zip
+          rm -rf /tmp/artifact /tmp/package
+          mkdir -p /tmp/artifact /tmp/package
+          unzip -q /tmp/artifact.zip -d /tmp/artifact
+          unzip -q /tmp/artifact/coverage-limited-scaling-law-submission-ready.zip -d /tmp/package
+          SRC=/tmp/package/coverage-limited-scaling-law-submission-ready/repository
+          test -f "${SRC}/paper/main.tex"
+          rsync -a --exclude='.github/' "${SRC}/" ./
+          rm -rf .agent_expand .agent_payload
+          find experiments -type d -name __pycache__ -prune -exec rm -rf {} +
+          find paper/figures -type f -name '*.png' -delete
+          rm -f paper/*.aux paper/*.blg paper/*.log paper/*.out paper/*.synctex.gz
+
+      - name: Apply final seven-page technical revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          main = Path('paper/main.tex')
+          text = main.read_text()
+          diagnostic = r'''\paragraph{Local frontier diagnostic.}
+          Let $L=L_m+L_T+L_N$ denote the three terms in the additive law, with exponents
+          $\delta=b-1$, $\gamma=(b-1)/a$, and $\beta=(b-1)/s$. Their risk shares
+          \[
+          \omega_m=\frac{L_m}{L},\qquad
+          \omega_T=\frac{L_T}{L},\qquad
+          \omega_N=\frac{L_N}{L}
+          \]
+          satisfy $\omega_m+\omega_T+\omega_N=1$. Equivalently, they are the normalized
+          logarithmic elasticities $-\partial_{\log m}\log L/\delta$,
+          $-\partial_{\log T}\log L/\gamma$, and
+          $-\partial_{\log N}\log L/\beta$ (proof in the supplement). The largest
+          weight identifies the active bottleneck; $\omega_T\asymp\omega_N$ recovers
+          $K\asymp\eta^{-1}N^{a/s-1}$. Measured slopes probe all three corners:
+          $-0.991$ versus $-1$ for width, $-0.459$ versus $-1/2$ for updates, and
+          $-0.655$ versus $-2/3$ for unique data. Local finite differences therefore
+          indicate which resource to expand next.
+
+          '''
+          text, n = re.subn(
+              r'\\subsection\{Diagnosing the Active Frontier from Local Slopes\}.*?(?=\\section\{Discussion and Limitations\})',
+              lambda _: diagnostic,
+              text,
+              flags=re.S,
+          )
+          if n != 1:
+              raise SystemExit(f'diagnostic replacement count: {n}')
+
+          final_block = r'''\section{Discussion and Limitations}
+
+          \paragraph{Interpretation of the stopping rule.}
+          The theorem predicts when optimization reaches the unique-data frontier, not
+          the exact validation optimum in every noisy application. Label noise can create
+          an earlier variance- or overfitting-limited optimum, so the coverage horizon is
+          best viewed as an upper limit on useful unregularized reuse.
+
+          \paragraph{Known versus estimated frequencies.}
+          The sharp mask uses population $p_j$ values; a plug-in mask needs uniform
+          small-count control. The plain output needs neither a mask nor an abort event,
+          at the cost of the logarithm in our present proof.
+
+          \paragraph{Representation and algorithmic scope.}
+          The theorem assumes independent addressable sparse coordinates, clipped
+          with-replacement replay, averaging, noiseless labels, and
+          $a-s+1<b<a+1$. Fixed or learned features, cyclic replay, reshuffling, and last
+          iterates require additional analysis. Progressive subsampling is an
+          achievability construction, not an optimality claim.
+
+          \paragraph{Practical implication.}
+          Input occupancy and conditional second moments indicate when to redirect
+          resources from replay to unique data or model capacity.
+
+          \section{Conclusion}
+
+          Sparse data impose a resource missing from total-update counts: unique feature
+          coverage. We derive its unavoidable floor, characterize its interaction with
+          capacity and optimization, and prove stable coactive replay reaches it at the
+          predicted epoch scale. Width sweeps and an input-only estimator validate all
+          three frontiers. Replay while optimization dominates; after coverage takes over,
+          spend on unique data or model capacity.
+
+          '''
+          text, n = re.subn(
+              r'\\section\{Discussion and Limitations\}.*?(?=\\bibliography\{references\})',
+              lambda _: final_block,
+              text,
+              flags=re.S,
+          )
+          if n != 1:
+              raise SystemExit(f'discussion replacement count: {n}')
+          main.write_text(text)
+
+          supp = Path('paper/supplement.tex')
+          s = supp.read_text()
+          compact = r'''\section{Frontier Elasticities}
+
+          Write $L=L_m+L_T+L_N$, where
+          $L_m=C_m m^{-\delta}$, $L_T=C_T(\eta T)^{-\gamma}$, and
+          $L_N=C_NN^{-\beta}$. Then
+          \[
+          -\partial_{\log m}\log L=\delta\frac{L_m}{L},\qquad
+          -\partial_{\log T}\log L=\gamma\frac{L_T}{L},
+          \]
+          with the analogous identity for $N$. Dividing by the exponents proves that the
+          normalized elasticities equal the three risk shares and sum to one. Centered
+          finite differences on a logarithmic grid estimate them whenever the additive
+          proxy is locally accurate.
+
+          '''
+          s, n = re.subn(
+              r'\\section\{Frontier Elasticities\}.*?(?=\\section\{Input-Only Saturation Estimation\})',
+              lambda _: compact,
+              s,
+              flags=re.S,
+          )
+          if n != 1:
+              raise SystemExit(f'supplement elasticity replacement count: {n}')
+          old = '''The principal commands are
+          \\begin{verbatim}
+          python -m pip install -r requirements.txt
+          make full
+          python experiments/frontier_diagnostics.py
+          make validate
+          make figures
+          \\end{verbatim}
+          '''
+          new = '''The principal commands are
+          \\begin{quote}
+          \\texttt{python -m pip install -r requirements.txt}\\\\
+          \\texttt{make full; make validate; make figures}\\\\
+          \\path{python experiments/frontier_diagnostics.py}
+          \\end{quote}
+          '''
+          if old not in s:
+              raise SystemExit('supplement command block not found')
+          supp.write_text(s.replace(old, new, 1))
+          PY
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Validate experiments
+        run: |
+          python -m pip install -r requirements.txt
+          make validate
+          python -m py_compile experiments/*.py
+
+      - name: Install manuscript dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
+            texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
+            texlive-fonts-extra texlive-plain-generic texlive-bibtex-extra \
+            tex-gyre cm-super dvipng poppler-utils
+
+      - name: Compile and preflight final PDFs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd paper
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          bibtex main
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          ! grep -E "LaTeX Warning: (Reference|Citation).*undefined|There were undefined references|There were undefined citations|Overfull \\hbox|Overfull \\vbox" main.log supplement.log
+          test "$(pdfinfo main.pdf | awk '/^Pages:/ {print $2}')" -eq 8
+          pdftotext -f 7 -l 7 main.pdf /tmp/page7.txt
+          pdftotext -f 8 -l 8 main.pdf /tmp/page8.txt
+          grep -q Conclusion /tmp/page7.txt
+          grep -q References /tmp/page8.txt
+          ! grep -q References /tmp/page7.txt
+          for pdf in main.pdf supplement.pdf figures/*.pdf; do
+            pdffonts "$pdf" | tail -n +3 | \
+              awk '$0 ~ /Type 3|Identity-H/ || $(NF-4) != "yes" { bad=1 } END { exit bad }'
+          done
+
+      - name: Commit verified tree to clean branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Expand AAAI paper with diagnostics and proof exposition'
+          git push --force origin HEAD:agent/final-aaai-clean

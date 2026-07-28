@@ -1,0 +1,33 @@
+\section{Discussion and Limitations}
+
+\paragraph{Interpretation of the stopping rule.}
+The theorem predicts when optimization reaches the unique-data frontier, not
+the exact validation optimum in every noisy application. Label noise can create
+an earlier variance- or overfitting-limited optimum, so the coverage horizon is
+best viewed as an upper limit on useful unregularized reuse.
+
+\paragraph{Known versus estimated frequencies.}
+The sharp mask uses population $p_j$ values; a plug-in mask needs uniform
+small-count control. The plain output needs neither a mask nor an abort event,
+at the cost of the logarithm in our present proof.
+
+\paragraph{Representation and algorithmic scope.}
+The theorem assumes independent addressable sparse coordinates, clipped
+with-replacement replay, averaging, noiseless labels, and
+$a-s+1<b<a+1$. Fixed or learned features, cyclic replay, reshuffling, and last
+iterates require additional analysis. Progressive subsampling is an
+achievability construction, not an optimality claim.
+
+\paragraph{Practical implication.}
+Input occupancy and conditional second moments indicate when to redirect
+resources from replay to unique data or model capacity.
+
+\section{Conclusion}
+
+Sparse data impose a resource missing from total-update counts: unique feature
+coverage. We derive its unavoidable floor, characterize its interaction with
+capacity and optimization, and prove stable coactive replay reaches it at the
+predicted epoch scale. Width sweeps and an input-only estimator validate all
+three frontiers. Replay while optimization dominates; after coverage takes over,
+spend on unique data or model capacity.
+

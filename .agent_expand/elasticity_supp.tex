@@ -1,19 +1,13 @@
 \section{Frontier Elasticities}
 
-For
+Write $L=L_m+L_T+L_N$, where
+$L_m=C_m m^{-\delta}$, $L_T=C_T(\eta T)^{-\gamma}$, and
+$L_N=C_NN^{-\beta}$. Then
 \[
-L=C_m m^{-\delta}+C_T(\eta T)^{-\gamma}+C_NN^{-\beta},
+-\partial_{\log m}\log L=\delta\frac{L_m}{L},\qquad
+-\partial_{\log T}\log L=\gamma\frac{L_T}{L},
 \]
-direct differentiation gives
-\[
--\partial_{\log m}\log L
-=\delta\frac{C_m m^{-\delta}}{L},\qquad
--\partial_{\log T}\log L
-=\gamma\frac{C_T(\eta T)^{-\gamma}}{L},
-\]
-and the analogous identity for $N$.  Dividing by the respective exponents
-proves Eq.~\eqref{eq:elasticity-simplex}.  Centered finite differences on a
-logarithmic grid estimate these weights whenever the additive scaling proxy is
-locally accurate.  The same calculation extends to any finite collection of
-additive bottleneck terms: their normalized elasticities form a simplex and are
-exactly their fractions of predicted risk.
+with the analogous identity for $N$. Dividing by the exponents proves that the
+normalized elasticities equal the three risk shares and sum to one. Centered
+finite differences on a logarithmic grid estimate them whenever the additive
+proxy is locally accurate.

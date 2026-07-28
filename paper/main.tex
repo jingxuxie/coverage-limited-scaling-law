@@ -238,25 +238,26 @@ $\R(f)=\E_X[(f(X)-Y)^2]$.
 
 \subsection{Three frontiers and the correct intervention}
 
-Table~\ref{tab:regimes} summarizes the regimes implied by
-Eq.~\eqref{eq:frontiers-intro}. The same risk exponent $b-1$ applies to each
-frontier because the unresolved predictive tail obeys
-$\sum_{j>J}g_j\asymp J^{1-b}$. What differs is the resource that moves $J$.
-This is why fitting a single law in the product $nK$ can extrapolate correctly
-in the optimization regime and fail after coverage becomes active.
+Table~\ref{tab:regimes} covers the exact one-hot law and frontier-matched
+multi-active achievability. The full three-term law is exact only for one-hot;
+the fixed-$n$, all-data multi-active bound differs. In both results the
+unresolved tail is $\sum_{j>J}g_j\asymp J^{1-b}$, while the resource moving $J$
+changes. Thus a law in $nK$ alone fails once coverage is active.
 
 \begin{table*}[t]
 \centering
-\caption{The three resource frontiers. The active frontier is the smallest of
-the three, and therefore determines both the leading risk and the useful next
-intervention.}
+\caption{\textbf{Three resource frontiers.} The law is exact for one-hot; the
+multi-active result is frontier-matched achievability. The smallest rank sets
+the dominant tail and useful intervention.}
 \label{tab:regimes}
-\begin{tabular}{llll}
+\begin{tabular}{@{}lll p{0.31\textwidth}@{}}
 \toprule
 Active bottleneck & Rank scale & Leading risk & Resource that improves it \\
 \midrule
 Capacity & $J_{\rm cap}=m$ & $m^{-(b-1)}$ & increase model width \\
-Optimization & $J_{\rm opt}=(\eta nK)^{1/a}$ & $(\eta nK)^{-(b-1)/a}$ & take more stable updates \\
+Optimization & $J_{\rm opt}=(\eta nK)^{1/a}$ & $(\eta nK)^{-(b-1)/a}$ &
+increase effective optimization time $\eta T=\eta nK$ within the stable-step
+regime \\
 Coverage & $J_{\rm cov}=n^{1/s}$ & $n^{-(b-1)/s}$ & collect unique examples \\
 \bottomrule
 \end{tabular}
@@ -660,11 +661,11 @@ finite-sample calibration directly.
 \hfill
 \includegraphics[width=0.485\textwidth]{figures/scaling_collapse.pdf}
 \caption{\textbf{Optimization gives way to coverage.}
-Left: averaged risk decreases with epochs and plateaus near the independently
-computed unseen-feature floor; increasing the number of unique examples lowers
-the plateau. Right: curves collapse after normalizing epochs by
-$\eta n^{1-a/s}$ and risk by $n^{(b-1)/s}$. Default
-$(s,a,b)=(1.5,2,2)$; means over five seeds.}
+Left: for three of the six $n$ values, Polyak risk approaches the analytic
+unseen-feature floor; more unique examples lower the plateau. Right: all six
+collapse around the predicted transition when plotting
+$n^{(b-1)/s}\mathcal E$ against $\eta K n^{1-a/s}$. Here
+$(a,s,b)=(2,1.5,2)$; curves are five-seed means with $\pm1$ SE bands.}
 \label{fig:main}
 \end{figure*}
 
@@ -673,13 +674,13 @@ $(s,a,b)=(1.5,2,2)$; means over five seeds.}
 \includegraphics[width=0.485\textwidth]{figures/capacity_frontier.pdf}
 \hfill
 \includegraphics[width=0.425\textwidth]{figures/stopping_rule.pdf}
-\caption{\textbf{The third frontier and an input-only stopping rule.}
-Left: at large $n$ and $K$, risk follows the capacity tail $m^{-1}$ before
-flattening at the unique-data floor; the fitted small-width slope is $-0.991$.
-Right: the saturation epoch predicted from activation frequencies and
-conditional second moments tracks the measured crossing of $1.25$ times the
-coverage floor across three spectral regimes. Each point aggregates five
-seeds.}
+\caption{\textbf{Capacity and an input-only stopping rule.}
+Left: under oracle rank-aligned truncation, Polyak-averaged clipped replay
+follows the $m^{-1}$ capacity tail before the total finite-width
+capacity-plus-coverage floor; the small-width slope is $-0.991$. Right:
+input-only predictions versus the first epoch at which Polyak risk reaches
+$1.25$ times the expected coverage floor. Points are five-seed medians; the
+diagonal is the uncalibrated identity.}
 \label{fig:diagnostics}
 \end{figure*}
 
@@ -694,7 +695,7 @@ Unless noted otherwise,
 p_j=\frac{\mu}{\zeta(s)}j^{-s},\qquad
 \lambda_j=j^{-a},\qquad g_j=j^{-b},
 \]
-with $(s,a,b)=(1.5,2,2)$, expected active features $\mu=1$, $\eta=0.2$,
+with $(a,s,b)=(2,1.5,2)$, expected active features $\mu=1$, $\eta=0.2$,
 clipping radius $\rho=0.9$, and ambient dimension $d=4096$ or $8192$. Risk in
 the simulated coordinates is computed exactly from the coefficient error and
 we add the analytic tail $\zeta(b,d+1)$. The primary protocol is clipped
@@ -727,14 +728,13 @@ is a sharp-proof device rather than an empirical performance trick.
 
 \subsection{Capacity frontier}
 
-The original experiments varied $n$ and $K$ but did not directly isolate
-$J_{\rm cap}$. We therefore fix $n=32768$, $K=256$, and vary the representable
-rank $m\in\{64,128,\ldots,4096\}$. For $m\le256$, averaged risk has slope
-$-0.991$, while the exact omitted target tail has slope $-0.996$; both match the
-prediction $m^{-(b-1)}=m^{-1}$. Around $m\approx1024$, the capacity tail falls
-below the unique-data floor and further width gives little benefit. The left
-panel of Figure~\ref{fig:diagnostics} therefore exposes the third frontier that
-was implicit in the earlier scaling collapse.
+We isolate $J_{\rm cap}$ by oracle rank-aligned truncation: at each $m$, set
+$d=m$, train every coordinate, and add the analytic target tail to test risk.
+Unlike fixed-ambient masking, no omitted component adds training-label noise.
+With $n=32768$, $K=256$, and $m\in\{64,128,\ldots,4096\}$, the
+Polyak-risk and target-tail slopes for $m\le256$ are $-0.991$ and $-0.996$,
+matching $m^{-(b-1)}=m^{-1}$. Near $m=1024$, the capacity tail falls below the
+total finite-width unseen-feature floor, which is then coverage-dominated.
 
 \subsection{Input-only stopping prediction}
 
@@ -753,17 +753,18 @@ tracks the change in replay horizon across data scales and spectral regimes.
 \subsection{Additional checks}
 
 \paragraph{Progressive compute scaling.}
-For total updates $T\in[2^{12},2^{20}]$, we choose
-$N=\lfloor(\eta T)^{s/a}\rfloor$ as in Corollary~\ref{cor:full}. The fitted
-slopes are $-0.502$ for the averaged iterate and $-0.497$ for the last iterate,
-matching $T^{-(b-1)/a}=T^{-1/2}$.
+For $T_{\rm target}\in[2^{12},2^{20}]$, we set
+$N=\lfloor(\eta T_{\rm target})^{s/a}\rfloor$,
+$K=\lfloor T_{\rm target}/N\rfloor$, and plot against actual
+$T_{\rm eff}=NK$. Polyak and last-iterate slopes are $-0.502$ and $-0.497$.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/progressive_schedule.pdf}
 \caption{\textbf{Frontier-matched schedule.}
-Choosing $N\asymp(\eta T)^{s/a}$ yields the predicted
-$T^{-(b-1)/a}=T^{-1/2}$ compute law.}
+Against actual updates $T_{\rm eff}=NK$, Polyak risk follows the predicted
+$T_{\rm eff}^{-(b-1)/a}=T_{\rm eff}^{-1/2}$ law; the last iterate matches
+empirically. The dashed curve is a vertically aligned slope guide.}
 \label{fig:progressive}
 \end{figure}
 
@@ -776,13 +777,15 @@ covered theorem setting.
 
 \begin{table}[t]
 \centering
-\caption{Predicted and measured coverage slopes.}
+\caption{\textbf{Large-epoch coverage slopes} for $(a,s)=(2,1.5)$, $K=512$.
+Measured values are log--log slopes of seed-averaged Polyak risk across $n$;
+$b=1.4^\dagger$ lies outside the theorem's source condition.}
 \label{tab:source}
 \begin{tabular}{ccc}
 \toprule
 $b$ & predicted & measured \\
 \midrule
-1.4 & -0.267 & -0.263 \\
+$1.4^\dagger$ & -0.267 & -0.263 \\
 1.7 & -0.467 & -0.458 \\
 2.0 & -0.667 & -0.653 \\
 2.4 & -0.933 & -0.915 \\

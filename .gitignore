@@ -17,3 +17,4 @@ experiments/release_results/
 paper/figures/*.png
 full_run.log
 plot.log
+/coverage-limited-scaling-law-complete-package.zip

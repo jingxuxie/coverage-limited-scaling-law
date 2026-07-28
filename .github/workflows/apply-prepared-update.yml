@@ -33,6 +33,7 @@ jobs:
           cp AAAI_AuthorKit27/aaai2027.bst paper/aaai2027.bst
           python - <<'PY'
           from pathlib import Path
+          import re
 
           main = Path("paper/main.tex")
           text = main.read_text()
@@ -60,6 +61,15 @@ jobs:
               raise SystemExit("discussion insertion marker not found")
           elasticity = Path(".agent_expand/elasticity_main.tex").read_text()
           text = text.replace(discussion, elasticity + "\n" + discussion, 1)
+
+          final_discussion = Path(".agent_expand/discussion_conclusion.tex").read_text()
+          pattern = re.compile(
+              r"\\section\{Discussion and Limitations\}.*?(?=\\bibliography\{references\})",
+              re.S,
+          )
+          text, count = pattern.subn(lambda _: final_discussion, text)
+          if count != 1:
+              raise SystemExit(f"discussion/conclusion replacement count: {count}")
           main.write_text(text)
 
           supplement = Path("paper/supplement.tex")
@@ -69,13 +79,25 @@ jobs:
               raise SystemExit("supplement insertion marker not found")
           supp_budget = Path(".agent_expand/budget_supp.tex").read_text()
           supp_elasticity = Path(".agent_expand/elasticity_supp.tex").read_text()
-          supplement.write_text(
-              supp_text.replace(
-                  supp_marker,
-                  supp_budget + "\n" + supp_elasticity + "\n" + supp_marker,
-                  1,
-              )
+          supp_text = supp_text.replace(
+              supp_marker,
+              supp_budget + "\n" + supp_elasticity + "\n" + supp_marker,
+              1,
           )
+          old_commands = """The principal commands are
+          \\begin{verbatim}
+          python -m pip install -r requirements.txt
+          make full
+          python experiments/frontier_diagnostics.py
+          make validate
+          make figures
+          \\end{verbatim}
+          """
+          if old_commands not in supp_text:
+              raise SystemExit("supplement command block not found")
+          new_commands = Path(".agent_expand/repro_commands.tex").read_text()
+          supp_text = supp_text.replace(old_commands, new_commands, 1)
+          supplement.write_text(supp_text)
           PY
 
       - uses: actions/setup-python@v5
@@ -117,7 +139,7 @@ jobs:
           pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
           pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
           ! grep -E "LaTeX Warning: (Reference|Citation).*undefined|There were undefined references|There were undefined citations|Overfull \\hbox|Overfull \\vbox" main.log supplement.log
-          test "$(pdfinfo main.pdf | awk '/^Pages:/ {print $2}')" -le 10
+          test "$(pdfinfo main.pdf | awk '/^Pages:/ {print $2}')" -eq 8
           pdftotext -f 7 -l 7 main.pdf /tmp/main-page7.txt
           pdftotext -f 8 -l 8 main.pdf /tmp/main-page8.txt
           grep -q "Conclusion" /tmp/main-page7.txt
@@ -139,7 +161,11 @@ jobs:
           rm -rf .agent_expand .agent_payload
           rm -f .github/workflows/apply-expanded-paper.yml \
             .github/workflows/apply-prepared-update.yml \
+            .github/workflows/export-source-fast.yml \
             .reproduction-trigger .agent-payload-trigger .prepared-release-trigger
+          find experiments -type d -name __pycache__ -prune -exec rm -rf {} +
+          find paper/figures -type f -name '*.png' -delete
+          rm -f paper/*.aux paper/*.blg paper/*.log paper/*.out paper/*.synctex.gz
           git add -A
           git diff --cached --check
           git commit -m "Expand AAAI paper with diagnostics and proof exposition"

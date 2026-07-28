@@ -1,0 +1,235 @@
+name: export complete submission package
+
+on:
+  push:
+    branches:
+      - agent/expand-aaai-paper
+    paths:
+      - ".agent_expand/EXPORT_TRIGGER"
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/expand-aaai-paper
+          fetch-depth: 0
+
+      - name: Unpack and finalize source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .agent_expand/part-* > /tmp/source_payload.b64
+          base64 --decode /tmp/source_payload.b64 > /tmp/source_payload.tar.gz
+          echo "1aaacc7293b6c6b276c1460392d5abe2e34f5d525b037b17749654553a085d44  /tmp/source_payload.tar.gz" | sha256sum --check
+          tar -xzf /tmp/source_payload.tar.gz
+          cp AAAI_AuthorKit27/aaai2027.bst paper/aaai2027.bst
+          python .agent_expand/export_prepare.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Generate and validate complete results
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -r requirements.txt
+          python experiments/frontier_diagnostics.py --mode full --out experiments/results
+          make validate
+          python -m py_compile \
+            experiments/multi_active_replay.py \
+            experiments/frontier_diagnostics.py \
+            experiments/plot_results.py \
+            experiments/validate_results.py
+
+      - name: Install manuscript dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
+            texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
+            texlive-fonts-extra texlive-plain-generic texlive-bibtex-extra \
+            tex-gyre cm-super dvipng poppler-utils zip
+
+      - name: Regenerate figures and compile PDFs
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          make figures
+          cd paper
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          bibtex main
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          pdflatex -interaction=nonstopmode -halt-on-error supplement.tex
+          pdfinfo main.pdf | grep '^Pages:'
+          pdfinfo supplement.pdf | grep '^Pages:'
+
+      - name: Build clean downloadable package
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=/tmp/coverage-limited-scaling-law-submission-ready
+          REPO="$OUT/repository"
+          rm -rf "$OUT"
+          mkdir -p "$REPO"
+
+          tar \
+            --exclude='./.git' \
+            --exclude='./.agent_expand' \
+            --exclude='./.agent_payload' \
+            --exclude='./.github/workflows/apply-expanded-paper.yml' \
+            --exclude='./.github/workflows/apply-prepared-update.yml' \
+            --exclude='./.github/workflows/export-complete-package.yml' \
+            --exclude='./.reproduction-trigger' \
+            --exclude='./.agent-payload-trigger' \
+            --exclude='./.prepared-release-trigger' \
+            --exclude='./__pycache__' \
+            --exclude='*.pyc' \
+            -cf - . | tar -xf - -C "$REPO"
+
+          cat > "$OUT/PACKAGE_README.md" <<'EOF'
+          # Coverage-Limited Scaling Laws — Complete Submission Package
+
+          This archive contains the clean, source-complete repository snapshot:
+
+          - expanded AAAI manuscript and supplement;
+          - 31-reference bibliography;
+          - theorem notes and proof exposition;
+          - experiment and plotting code;
+          - all checked-in result tables and publication figures;
+          - compiled manuscript PDFs when the runner build succeeds;
+          - validation workflow, with all temporary payload workflows removed.
+
+          ## Apply and push automatically
+
+          Start from a clean local checkout of
+          `https://github.com/jingxuxie/coverage-limited-scaling-law`.
+
+          Linux/macOS:
+
+          ```bash
+          bash APPLY_AND_PUSH.sh /path/to/coverage-limited-scaling-law
+          ```
+
+          Windows PowerShell:
+
+          ```powershell
+          powershell -ExecutionPolicy Bypass -File .\APPLY_AND_PUSH.ps1 C:\path\to\coverage-limited-scaling-law
+          ```
+
+          The default new branch is `agent/submission-ready-expanded-paper`. Pass a
+          second argument to choose another branch name.
+
+          ## Apply without pushing
+
+          Copy everything under `repository/` over your local repository, remove
+          `.agent_expand/`, `.agent_payload/`, and temporary application workflows,
+          then inspect `git diff`, commit, and push normally.
+
+          ## Validate
+
+          ```bash
+          python -m pip install -r requirements.txt
+          make validate
+          make figures
+          cd paper
+          pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+          pdflatex supplement.tex && pdflatex supplement.tex
+          ```
+          EOF
+
+          cat > "$OUT/APPLY_AND_PUSH.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          PACKAGE_DIR="$(cd "$(dirname "$0")" && pwd)"
+          TARGET="${1:-}"
+          BRANCH="${2:-agent/submission-ready-expanded-paper}"
+          if [[ -z "$TARGET" || ! -d "$TARGET/.git" ]]; then
+            echo "Usage: bash APPLY_AND_PUSH.sh /path/to/local/repo [branch-name]" >&2
+            exit 2
+          fi
+          if [[ -n "$(git -C "$TARGET" status --porcelain)" ]]; then
+            echo "Target checkout has uncommitted changes; commit or stash them first." >&2
+            exit 3
+          fi
+          git -C "$TARGET" switch -c "$BRANCH" 2>/dev/null || git -C "$TARGET" switch "$BRANCH"
+          rm -rf "$TARGET/.agent_expand" "$TARGET/.agent_payload"
+          rm -f \
+            "$TARGET/.github/workflows/apply-expanded-paper.yml" \
+            "$TARGET/.github/workflows/apply-prepared-update.yml" \
+            "$TARGET/.github/workflows/export-complete-package.yml" \
+            "$TARGET/.reproduction-trigger" \
+            "$TARGET/.agent-payload-trigger" \
+            "$TARGET/.prepared-release-trigger"
+          tar -C "$PACKAGE_DIR/repository" -cf - . | tar -C "$TARGET" -xf -
+          git -C "$TARGET" add -A
+          if git -C "$TARGET" diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git -C "$TARGET" commit -m "Expand AAAI paper with diagnostics and proof exposition"
+          fi
+          git -C "$TARGET" push -u origin "$BRANCH"
+          echo "Pushed $BRANCH. Open a pull request against main after checks pass."
+          EOF
+          chmod +x "$OUT/APPLY_AND_PUSH.sh"
+
+          cat > "$OUT/APPLY_AND_PUSH.ps1" <<'EOF'
+          param(
+            [Parameter(Mandatory=$true)][string]$Target,
+            [string]$Branch = "agent/submission-ready-expanded-paper"
+          )
+          $ErrorActionPreference = "Stop"
+          $PackageDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+          if (-not (Test-Path (Join-Path $Target ".git"))) {
+            throw "Target must be a local Git checkout."
+          }
+          $dirty = git -C $Target status --porcelain
+          if ($dirty) { throw "Target checkout has uncommitted changes; commit or stash them first." }
+          git -C $Target switch -c $Branch 2>$null
+          if ($LASTEXITCODE -ne 0) { git -C $Target switch $Branch }
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \
+            (Join-Path $Target ".agent_expand"), (Join-Path $Target ".agent_payload")
+          @(
+            ".github/workflows/apply-expanded-paper.yml",
+            ".github/workflows/apply-prepared-update.yml",
+            ".github/workflows/export-complete-package.yml",
+            ".reproduction-trigger", ".agent-payload-trigger", ".prepared-release-trigger"
+          ) | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Target $_) }
+          Copy-Item -Recurse -Force (Join-Path $PackageDir "repository\*") $Target
+          git -C $Target add -A
+          git -C $Target diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git -C $Target commit -m "Expand AAAI paper with diagnostics and proof exposition"
+          }
+          git -C $Target push -u origin $Branch
+          Write-Host "Pushed $Branch. Open a pull request against main after checks pass."
+          EOF
+
+          cd /tmp
+          zip -qr coverage-limited-scaling-law-submission-ready.zip \
+            coverage-limited-scaling-law-submission-ready
+          sha256sum coverage-limited-scaling-law-submission-ready.zip \
+            > coverage-limited-scaling-law-submission-ready.zip.sha256
+
+      - name: Upload complete package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-limited-scaling-law-submission-ready
+          path: |
+            /tmp/coverage-limited-scaling-law-submission-ready.zip
+            /tmp/coverage-limited-scaling-law-submission-ready.zip.sha256
+          if-no-files-found: error
+          retention-days: 14

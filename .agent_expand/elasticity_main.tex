@@ -1,43 +1,17 @@
-\subsection{Diagnosing the Active Frontier}
-
-The three-term law can diagnose the active bottleneck locally.  Write
-\begin{equation}
-L(m,T,N)=C_m m^{-\delta}+C_T(\eta T)^{-\gamma}+C_NN^{-\beta},
-\label{eq:elasticity-proxy}
-\end{equation}
-where $\delta=b-1$, $\gamma=(b-1)/a$, and $\beta=(b-1)/s$.
-Define the positive logarithmic elasticities
+\paragraph{Local frontier diagnostic.}
+Let $L=L_m+L_T+L_N$ denote the three terms in the additive law, with exponents
+$\delta=b-1$, $\gamma=(b-1)/a$, and $\beta=(b-1)/s$. Their risk shares
 \[
-\begin{aligned}
-e_m&=-\partial_{\log m}\log L, &
-e_T&=-\partial_{\log T}\log L, &
-e_N&=-\partial_{\log N}\log L.
-\end{aligned}
+\omega_m=\frac{L_m}{L},\qquad
+\omega_T=\frac{L_T}{L},\qquad
+\omega_N=\frac{L_N}{L}
 \]
-
-\begin{proposition}[Frontier weights]
-\label{prop:elasticity}
-For Eq.~\eqref{eq:elasticity-proxy},
-\begin{equation}
-\frac{e_m}{\delta}+\frac{e_T}{\gamma}+\frac{e_N}{\beta}=1.
-\label{eq:elasticity-simplex}
-\end{equation}
-Each normalized elasticity equals the fraction of predicted risk contributed by
-its corresponding term.
-\end{proposition}
-\begin{proof}
-Differentiate Eq.~\eqref{eq:elasticity-proxy} with respect to the three
-logarithmic resources and divide by $L$.
-\end{proof}
-
-Thus the normalized elasticities form a scale-local phase map without requiring
-the constants $C_m,C_T,C_N$.  A large width, update, or unique-data weight
-identifies a capacity, optimization, or coverage bottleneck, respectively.  The
-optimization--coverage boundary satisfies
-$C_T(\eta T)^{-\gamma}\asymp C_NN^{-\beta}$, recovering
-$K=T/N\asymp\eta^{-1}N^{a/s-1}$.  The measured slopes probe all three corners:
-$-0.991$ versus $-\delta=-1$ for width, $-0.459$ versus
-$-\gamma=-1/2$ for early updates, and $-0.655$ versus
-$-\beta=-2/3$ for unique data.  Finite differences on neighboring logarithmic
-scale points therefore provide a practical rule: increase the resource with the
-largest normalized elasticity, and stop replay when its weight becomes small.
+satisfy $\omega_m+\omega_T+\omega_N=1$. Equivalently, they are the normalized
+logarithmic elasticities $-\partial_{\log m}\log L/\delta$,
+$-\partial_{\log T}\log L/\gamma$, and
+$-\partial_{\log N}\log L/\beta$ (proof in the supplement). The largest
+weight identifies the active bottleneck; $\omega_T\asymp\omega_N$ recovers
+$K\asymp\eta^{-1}N^{a/s-1}$. Measured slopes probe all three corners:
+$-0.991$ versus $-1$ for width, $-0.459$ versus $-1/2$ for updates, and
+$-0.655$ versus $-2/3$ for unique data. Local finite differences therefore
+indicate which resource to expand next.

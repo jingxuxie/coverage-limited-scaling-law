@@ -1,60 +1,49 @@
 # Research Roadmap and Current Status
 
-## Completed theorem stack
+## Completed for the AAAI submission
 
-The original roadmap asked whether ordinary replay SGD on genuinely multi-active sparse examples follows the coverage-limited law. The following pieces are now rigorous.
+The submission now contains a coherent theorem–estimator–experiment stack.
 
-1. An algorithm-independent unseen-feature lower bound and its sharp power-law constant.
-2. An exact finite-epoch one-hot replay formula with capacity, optimization, and coverage frontiers.
-3. Statistical achievability for multi-active data using singleton-filtered replay.
-4. A new **all-row coactive replay theorem** for example-norm-clipped, with-replacement SGD with Polyak averaging.
-5. An all-data saturation corollary:
+1. **Coverage lower bound:** an algorithm-independent unseen-feature floor and its sharp power-law constant.
+2. **Occupancy calculus:** asymptotics for distinct observed features, observed Euclidean teacher energy, and missing predictive mass.
+3. **Exact benchmark:** a finite-sample one-hot replay formula with capacity, optimization, and coverage frontiers.
+4. **Sharp coactive theorem:** example-norm-clipped, with-replacement replay uses every coactive row; a label-free anchor readout reaches the sharp coverage rate.
+5. **Plain output theorem:** the unmasked Polyak average needs no singleton-support abort and attains the same exponents up to logarithms.
+6. **Replay horizon:**
    \[
-   K_{\rm sat}=\widetilde O(\eta^{-1}n^{a/s-1}).
+   K_{\rm sat}=O(\eta^{-1}n^{a/s-1}).
    \]
-6. A progressive-data schedule attaining
+7. **Full frontier schedule:**
    \[
-   \widetilde O\!\left(
-   m^{-(b-1)}+(\eta T)^{-(b-1)/a}+n^{-(b-1)/s}
-   \right).
+   O\!\left(m^{-(b-1)}+(\eta T)^{-(b-1)/a}+n^{-(b-1)/s}\right)
    \]
+   for the anchor output.
+8. **Input-only estimator:** empirical activation frequencies and conditional amplitudes predict the saturation epoch without labels.
+9. **Direct empirical coverage of all three frontiers:** dataset-size/epoch sweeps, a width sweep, progressive compute scaling, source exponents, fixed-compute allocation, coactivation protocols, clipping stress, and stopping-rule calibration.
 
-The noncommuting rank-one update obstruction is handled by two observations: clipping makes every coactive update a Euclidean contraction, and naturally occurring singleton rows certify coordinate-wise curvature without being filtered out by the optimizer.
+The expanded release contains 795 training runs and 5,400 population-risk checkpoints.
 
-## Completed empirical package
+## Submission claim boundary
 
-The release sweep contains 670 sparse training runs and 4,285 risk checkpoints. It tests:
-
-- optimization-to-coverage transitions over `n` and `K`;
-- the three-frontier scaling collapse;
-- the progressive compute schedule;
-- fixed-compute fresh-data versus reuse allocation;
-- four source exponents;
-- three spectral configurations;
-- coactivation density and sampling protocol;
-- clipped versus unclipped stability.
-
-The fixed-exponent two-term model explains 98.1% of averaged-risk variation, the progressive schedule has slope `-0.5016`, and all source-exponent slopes are within `0.02` of their predictions.
-
-## Submission-ready claim boundary
-
-The paper claims a theorem for:
+The theorem applies to:
 
 - independent Bernoulli sparse coordinates;
-- `s>1`, `a>=s`, and source range `a-s+1<b<a+1`;
+- `s>1`, `a>=s`, and `a-s+1<b<a+1`;
 - noiseless realizable labels on the observed dictionary;
 - with-replacement replay;
 - example-norm clipping;
 - Polyak averaging;
-- an observable support certificate, with zero fallback on certificate failure.
+- a label-free, distribution-aware anchor mask for the sharp rate.
 
-The experiments additionally test unguarded last iterates, cyclic replay, and random reshuffling. These are reported as empirical robustness, not theorem-level guarantees.
+The ordinary unmasked output is also proved, with a logarithmic loss and no support-abort event. Cyclic replay, random reshuffling, last-iterate behavior, and rougher sources appear only as empirical robustness checks.
 
-## Strong follow-up directions
+## Post-submission extensions, ranked
 
-1. Remove the logarithm by replacing simultaneous singleton coverage with a weighted occupancy argument.
-2. Prove the pre-saturation `K^{-(b-1)/a}` last-iterate rate for ordinary all-data replay.
-3. Extend the contraction proof to independently reshuffled and cyclic replay.
-4. Add label noise and characterize the interaction between coverage and variance floors.
-5. Replace coordinate-addressable features by a Gaussian random sketch or nonlinear random features.
-6. Derive and validate an unlabeled estimator of the stopping epoch from empirical occupancy and covariance statistics.
+1. **Noisy labels and a variance frontier.** Determine how the coverage floor interacts with stochastic-gradient variance and early stopping.
+2. **Empirical anchor thresholds.** Replace population `p_j` in the sharp mask by confidence-adjusted empirical frequencies.
+3. **Last-iterate and reshuffling theory.** Prove the sharp pre-saturation exponent without Polyak averaging or with independent reshuffling.
+4. **Correlated sparse supports.** Identify when coactivation clusters change only constants and when they create a new interference frontier.
+5. **Random sketches and nonlinear features.** Determine whether mixing preserves, hides, or improves rare-feature coverage.
+6. **Real sparse representations.** Test the input-only stopping rule on bag-of-words, routed-expert, hashed, or recommender-system features.
+
+These are intentionally framed as future work rather than additional claims in the AAAI manuscript.

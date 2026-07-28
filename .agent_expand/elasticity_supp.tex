@@ -1,0 +1,19 @@
+\section{Frontier Elasticities}
+
+For
+\[
+L=C_m m^{-\delta}+C_T(\eta T)^{-\gamma}+C_NN^{-\beta},
+\]
+direct differentiation gives
+\[
+-\partial_{\log m}\log L
+=\delta\frac{C_m m^{-\delta}}{L},\qquad
+-\partial_{\log T}\log L
+=\gamma\frac{C_T(\eta T)^{-\gamma}}{L},
+\]
+and the analogous identity for $N$.  Dividing by the respective exponents
+proves Eq.~\eqref{eq:elasticity-simplex}.  Centered finite differences on a
+logarithmic grid estimate these weights whenever the additive scaling proxy is
+locally accurate.  The same calculation extends to any finite collection of
+additive bottleneck terms: their normalized elasticities form a simplex and are
+exactly their fractions of predicted risk.

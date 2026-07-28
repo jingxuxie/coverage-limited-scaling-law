@@ -178,6 +178,74 @@ def clipping_stress(results: Path, figures: Path) -> None:
     save(fig, figures / "clipping_stress.pdf")
 
 
+
+def capacity_frontier(results: Path, figures: Path) -> None:
+    frame = pd.read_csv(results / "capacity_sweep.csv")
+    aggregate = frame.groupby("m")[[
+        "average", "capacity_tail", "coverage_floor"
+    ]].mean().reset_index()
+
+    fig, ax = plt.subplots(figsize=(4.8, 3.25))
+    ax.loglog(
+        aggregate["m"], aggregate["average"], marker="o",
+        label="clipped replay",
+    )
+    ax.loglog(
+        aggregate["m"], aggregate["capacity_tail"], linestyle="--",
+        label="capacity tail",
+    )
+    ax.loglog(
+        aggregate["m"], aggregate["coverage_floor"], linestyle=":",
+        label="coverage floor",
+    )
+    reference = aggregate["average"].iloc[1] * (
+        aggregate["m"] / aggregate["m"].iloc[1]
+    ) ** (-1.0)
+    ax.loglog(
+        aggregate["m"], reference, linestyle="-.",
+        label=r"$m^{-1}$ reference",
+    )
+    ax.set_xlabel("model width $m$")
+    ax.set_ylabel("population excess risk")
+    ax.legend(frameon=False, fontsize=8)
+    ax.grid(True, which="both", linewidth=0.4, alpha=0.35)
+    save(fig, figures / "capacity_frontier.pdf")
+
+
+def stopping_rule(results: Path, figures: Path) -> None:
+    frame = pd.read_csv(results / "stopping_rule_sweep.csv")
+    one = frame.drop_duplicates(["config", "n", "seed"])
+    aggregate = one.groupby(["config", "n"])[[
+        "predicted_saturation", "measured_saturation"
+    ]].median().reset_index()
+    aggregate = aggregate[
+        np.isfinite(aggregate["predicted_saturation"])
+        & np.isfinite(aggregate["measured_saturation"])
+    ]
+
+    fig, ax = plt.subplots(figsize=(4.25, 3.25))
+    markers = ("o", "s", "^")
+    for marker, (name, group) in zip(markers, aggregate.groupby("config")):
+        ax.loglog(
+            group["predicted_saturation"], group["measured_saturation"],
+            marker=marker, linestyle="none", label=name.replace("-", " "),
+        )
+    lo = min(
+        float(aggregate["predicted_saturation"].min()),
+        float(aggregate["measured_saturation"].min()),
+    )
+    hi = max(
+        float(aggregate["predicted_saturation"].max()),
+        float(aggregate["measured_saturation"].max()),
+    )
+    ax.loglog([lo, hi], [lo, hi], linestyle="--", linewidth=1,
+              label="perfect prediction")
+    ax.set_xlabel(r"input-only predicted $K_{\rm sat}$")
+    ax.set_ylabel(r"measured $K_{\rm sat}$")
+    ax.legend(frameon=False, fontsize=8)
+    ax.grid(True, which="both", linewidth=0.4, alpha=0.35)
+    save(fig, figures / "stopping_rule.pdf")
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -194,6 +262,8 @@ def main() -> None:
     fixed_compute(args.results, args.figures)
     source_exponents(args.results, args.figures)
     clipping_stress(args.results, args.figures)
+    capacity_frontier(args.results, args.figures)
+    stopping_rule(args.results, args.figures)
 
 
 if __name__ == "__main__":

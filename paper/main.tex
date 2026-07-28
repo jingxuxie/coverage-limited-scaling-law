@@ -13,8 +13,10 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}[theorem]{Proposition}
 \newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
 \newcommand{\E}{\mathbb E}
 \newcommand{\R}{\mathcal R}
+\newcommand{\cA}{\mathcal A}
 \newcommand{\cS}{\mathcal S}
 \newcommand{\wtO}{\widetilde O}
 
@@ -27,241 +29,393 @@
 
 \begin{abstract}
 Repeated passes over a fixed dataset can improve optimization, but they cannot
-reveal predictive features absent from the unique examples.  We formalize this
-distinction in sparse power-law regression, where feature \(j\) activates with
-probability \(p_j\asymp j^{-s}\), has covariance eigenvalue
-\(\lambda_j\asymp j^{-a}\), and carries target energy
-\(g_j\asymp j^{-b}\).  Under a random-sign teacher prior, every learner
-incurs a Bayes---and hence minimax---coverage floor
-\(\sum_j g_j(1-p_j)^n\asymp n^{-(b-1)/s}\).
-An exactly solvable one-hot replay benchmark then yields the three-frontier law
+reveal predictive features absent from the unique examples. We formalize this
+distinction in sparse power-law regression, where feature $j$ activates with
+probability $p_j\asymp j^{-s}$, has covariance eigenvalue
+$\lambda_j\asymp j^{-a}$, and carries target energy
+$g_j\asymp j^{-b}$. Every learner incurs an unseen-feature floor
+$\sum_j g_j(1-p_j)^n\asymp n^{-(b-1)/s}$. An exactly solvable one-hot
+benchmark yields the three-frontier law
 \[
 \R(m,n,K)\asymp
 m^{-(b-1)}+(\eta nK)^{-(b-1)/a}+n^{-(b-1)/s}.
 \]
-Our main result extends coverage-limited reuse to genuinely multi-active data.
-We analyze support-certified, example-norm-clipped replay SGD, which trains on
-all coactive rows.  Natural singleton rows provide coordinate-wise curvature,
-while clipping makes every rank-one update a contraction.  We prove that using
-all \(n\) examples reaches the coverage floor after
-\(\widetilde O(\eta^{-1}n^{a/s-1})\) epochs, and that a
-frontier-matched progressive schedule attains the full law above up to
-logarithms.  Sparse simulations confirm the predicted transition, source
-exponents, and scaling collapse; a two-term fit explains \(98.1\%\) of the
-observed risk variation.  The results give a principled stopping rule for
-deciding when another epoch is less valuable than another unique example.
+Our main result extends this law to genuinely multi-active data, where replay
+updates do not commute. Example-norm-clipped SGD trains on every coactive row.
+Natural singleton rows provide coordinate-wise curvature, while clipping makes
+every rank-one update a contraction. The ordinary Polyak average attains the
+coverage rate up to a logarithm without a support-abort event; a label-free,
+distribution-aware anchor mask removes the logarithm and gives the sharp full
+frontier. In particular, all-data replay reaches the coverage floor after
+$O(\eta^{-1}n^{a/s-1})$ epochs. We also derive an input-only estimator of this
+useful replay horizon. Across 795 laptop-scale training runs, experiments expose
+all three frontiers, recover the predicted source exponents and scaling
+collapse, and predict the saturation epoch within a median factor below $1.7$
+across three spectral regimes.
 \end{abstract}
 
 \section{Introduction}
 
-Power-law learning curves summarize how performance changes with model size,
-data, and compute \cite{hestness2017scaling,kaplan2020scaling,
-hoffmann2022training,bahri2024explaining}.  They are especially consequential
-when data become scarce: one may continue training by repeating the same
-examples, but repeated tokens are eventually less valuable than fresh ones
-\cite{muennighoff2023scaling}.  This raises a basic allocation question:
-\emph{how many epochs are useful for a dataset of a given size?}
+Power-law learning curves summarize how error changes with model size, unique
+data, and computation \cite{hestness2017scaling,kaplan2020scaling,
+hoffmann2022training,bahri2024explaining}. They are most consequential when
+one resource becomes scarce. In a data-constrained regime, additional compute
+must be spent either on processing new examples or on taking more optimization
+steps over examples already seen. Large-scale language-model experiments show
+that a few repeated epochs can initially resemble fresh data, but the marginal
+value of repetition eventually vanishes \cite{muennighoff2025scaling}. This
+creates a basic resource-allocation question:
+\begin{quote}
+\emph{For a dataset of size $n$, how many epochs remain statistically useful?}
+\end{quote}
 
-Existing linear-regression theory explains how multi-pass optimization can
-learn progressively weaker spectral directions
-\cite{lin2024scaling,lin2025reuse,chen2026minibatch,zou2022multipass}.
-Other analyses prove that the benefit of repetition eventually plateaus for
-strongly convex or Zipfian one-hot models \cite{yan2026larger}.  These results,
-however, do not separate two facts that coincide in dense data: a direction
-can be difficult because its covariance is small, or impossible because the
-fixed dataset never contains it.  The distinction matters for sparse,
-long-tailed representations, where many predictive coordinates are rare.
-Recent sparse-feature theory identifies unobserved coordinates as a new
-bottleneck and connects them to asymmetric double descent
-\cite{sous2026asymmetric,belkin2019reconciling,hastie2022surprises}, but studies
-training to completion rather than the finite-epoch interaction between unique
-data and reuse.
+A law expressed only through total sample updates $nK$ cannot answer this
+question. Two runs can have the same update count while containing radically
+different amounts of unique information. The missing distinction is especially
+important for sparse or conditionally activated representations. A low-frequency
+feature may be hard to learn because its covariance is small, but it may also be
+completely absent from the fixed dataset. Additional epochs address the former
+problem and are powerless against the latter.
 
-We study this interaction in a model with three independently tunable tails:
-feature frequency \(p_j\), covariance \(\lambda_j\), and target energy \(g_j\).
-The resulting picture has three rank frontiers,
+Existing linear-regression scaling theory characterizes how finite model width,
+sample size, and optimization time expose progressively weaker spectral
+directions \cite{lin2024scaling,lin2025reuse,chen2026minibatch}. Multi-pass
+results show that reuse can improve the optimization term, while one-hot
+Zipfian models exhibit an eventual dataset-dependent plateau
+\cite{zou2022multipass,yan2026larger}. Recent sparse-feature theory identifies
+unobserved coordinates as a distinct statistical bottleneck, but studies the
+solution after training to completion rather than the finite-epoch interaction
+between coverage and reuse \cite{sous2026asymmetric}. Meanwhile, frequency-based
+accounts of neural scaling suggest that long-tailed skills or ``quanta'' are
+learned in decreasing order of occurrence \cite{michaud2023quantization}, and
+recent sparse-language-model experiments report that sparsity can shift the
+point at which repeated data saturate \cite{wu2026scarce}. These observations
+motivate a tractable theory in which frequency, optimization difficulty, and
+target importance are separately controllable.
+
+We study sparse regression with three power-law sequences:
 \[
+p_j\asymp j^{-s},\qquad
+\lambda_j\asymp j^{-a},\qquad
+g_j\asymp j^{-b}.
+\]
+They respectively describe how often a feature appears, how quickly it can be
+optimized, and how much population error it contributes. The resulting learning
+process has three rank frontiers,
+\begin{equation}
 J_{\rm cap}=m,\qquad
 J_{\rm opt}=(\eta nK)^{1/a},\qquad
 J_{\rm cov}=n^{1/s}.
-\]
-Their minimum determines the learned scale.  Our contributions are:
+\label{eq:frontiers-intro}
+\end{equation}
+The smallest frontier determines the effective learned scale. This decomposition
+also yields an operational rule: repeat the data while $J_{\rm opt}$ is smallest;
+once it reaches $\min\{J_{\rm cap},J_{\rm cov}\}$, another epoch cannot improve
+the leading error rate.
 
+Our contributions are as follows.
 \begin{itemize}
-\item We prove a Bayes and minimax unseen-feature lower bound, including its
-sharp power-law constant.
-\item We derive an exact finite-epoch replay law in a one-hot benchmark and
-recover the capacity--optimization--coverage frontier.
+\item We prove an algorithm-independent Bayes and minimax unseen-feature lower
+bound, including its sharp power-law constant. We also derive a compact
+occupancy calculus for the number of observed features, the observed teacher
+norm, and the missing predictive energy.
+\item We derive an exact finite-$n$, finite-$K$ one-hot replay law. It exposes
+the capacity, optimization, and coverage terms without an asymptotic surrogate
+for the SGD dynamics.
 \item For genuinely multi-active Bernoulli inputs, we resolve the
-noncommuting-update obstacle for a concrete all-row algorithm.  Clipped replay
-SGD reaches the coverage floor after
-\(K_{\rm sat}=\wtO(\eta^{-1}n^{a/s-1})\) epochs.  A progressive-data corollary
-achieves the full three-frontier law up to logarithms.
-\item Across \(4{,}285\) risk measurements from \(670\) sparse training runs,
-we observe the predicted optimization and coverage slopes, collapse curves
-across dataset sizes, and show that clipping prevents a high-coactivation
-instability.
+noncommuting-update obstacle for a concrete all-row algorithm. Example-norm
+clipping gives pathwise contraction. Singleton rows that occur naturally in the
+data provide enough curvature to prove a sharp anchor-masked bound and a plain
+Polyak-average bound up to logarithms.
+\item We turn the theorem into an input-only stopping rule. Regressing conditional
+feature amplitude against empirical activation frequency estimates the exponent
+$a/s-1$ and predicts $K_{\rm sat}$ before an expensive epoch sweep.
+\item We add direct tests of all three frontiers. In 795 training runs, the
+capacity sweep has slope $-0.991$ versus $-1$, the coverage slope is $-0.654$
+versus $-2/3$, a two-term law explains $98.1\%$ of risk variation, and the
+input-only stopping estimate has median multiplicative error below $1.7$ across
+three spectral settings.
 \end{itemize}
 
-Conceptually, epochs improve the \emph{optimization frontier}; only new
-examples move the \emph{coverage frontier}.  This gives a concrete criterion
-for switching resources from reuse to data collection.
+The central message is simple but not captured by total compute: epochs improve
+what the dataset already contains; only unique examples move the coverage
+frontier.
 
 \section{Related Work}
 
-\paragraph{Scaling laws.}
-Empirical power laws were documented across modalities and later used to
-optimize language-model resource allocation
-\cite{hestness2017scaling,kaplan2020scaling,hoffmann2022training,
-rosenfeld2020constructive}.  Theoretical accounts connect exponents to
-intrinsic dimension, kernel spectra, and task alignment
-\cite{sharma2022manifold,bahri2024explaining,bordelon2020spectrum,
-canatar2021spectral}.  Infinite-dimensional linear regression provides sharp
-model--data--compute rates under power-law spectra
-\cite{lin2024scaling}; data reuse and mini-batching extend this framework
-\cite{lin2025reuse,chen2026minibatch}.  The effective-frontier viewpoint
-abstracts learning as progressive coverage of a long tail
-\cite{zou2026frontiers}.  We provide a concrete sparse stochastic model in
-which coverage and optimization are different random mechanisms.
+\paragraph{Empirical and mechanistic scaling laws.}
+Early studies documented predictable power laws across language, vision,
+speech, and other modalities \cite{hestness2017scaling,kaplan2020scaling,
+rosenfeld2020constructive}. Compute-optimal scaling then made these curves into
+resource-allocation tools \cite{hoffmann2022training}. Theoretical accounts
+connect exponents to data-manifold dimension, kernel spectra, and task--model
+alignment \cite{sharma2022manifold,bordelon2020spectrum,canatar2021spectral,
+bahri2024explaining}. The quantization model attributes power laws to a
+Zipf-distributed sequence of discrete skills learned in frequency order
+\cite{michaud2023quantization}, while the effective-frontier framework abstracts
+capacity, coverage, and optimization as competing truncations of a long tail
+\cite{zou2026frontiers}. Our contribution gives these mechanisms a finite-data
+stochastic realization: it jointly analyzes unique occupancy and noncommuting
+replay dynamics, derives the replay horizon, and supplies an input-only
+estimator rather than assuming the frontier location.
 
-\paragraph{Repeated data and least-squares SGD.}
-Data-constrained language-model experiments find that modest reuse can mimic
-fresh data before diminishing returns set in
-\cite{muennighoff2023scaling}.  Linear-regression analyses study multi-pass
-generalization, effective reuse, and finite-dataset fluctuations
-\cite{zou2022multipass,yan2026larger}.  Our one-hot formula is a benchmark in
-this line; the main contribution is a multi-active theorem where replay
-matrices do not commute.  The proof combines classical least-squares SGD and iterate averaging
+\paragraph{Data constraints and repetition.}
+Data-constrained language-model experiments show that modest repetition can be
+nearly neutral relative to fresh data, followed by sharply diminishing returns
+\cite{muennighoff2025scaling}. Recent work fits scaling laws that explicitly
+include repeated tokens, data mixtures, or sparse training; notably, sparse
+language models can postpone repetition-induced saturation
+\cite{wu2026scarce}. These studies establish the practical importance of the
+question but do not isolate which information repeated examples cannot supply.
+Our contribution is a mechanism-level decomposition: $nK$ controls an
+optimization frontier, whereas unique occupancy depends only on $n$.
+
+\paragraph{Spectral regression and multi-pass SGD.}
+Power-law linear regression provides sharp model--data--compute rates and a
+controlled setting for studying data reuse \cite{lin2024scaling,lin2025reuse}.
+Mini-batch and multi-pass extensions describe how sampling protocols and
+iterations alter the optimization rate \cite{chen2026minibatch,
+zou2022multipass}. Zipfian one-hot regression produces a multi-epoch saturation
+law \cite{yan2026larger}; we use that commuting model as an exact benchmark and
+then analyze multi-active inputs whose rank-one replay matrices do not commute.
+Our proof draws on iterate averaging and least-squares SGD
 \cite{polyak1992acceleration,bach2013non,defossez2015averaged,
-dieuleveut2016nonparametric,neu2018averaging,ali2020implicit} with a new
-occupancy argument tailored to heavy-tailed sparse features.  Clipping is not
-cosmetic: sparse conditional amplitudes can make fixed-step dynamics unstable,
-as also observed by \citet{sous2026asymmetric}.
+dieuleveut2016nonparametric,neu2018averaging,ali2020implicit}, but the central
+curvature argument is occupancy-driven rather than based on a uniformly
+well-conditioned empirical covariance.
+
+\paragraph{Sparse features, occupancy, and missing mass.}
+Sparse-feature scaling can differ qualitatively from dense spectral theory and
+can generate asymmetric interpolation phenomena \cite{sous2026asymmetric,
+belkin2019reconciling,hastie2022surprises}. Mathematically, our observed
+feature dictionary is an infinite-urn process \cite{karlin1967central}. The
+unseen predictive term is a weighted missing mass, related to classical
+concentration results for unseen symbols and occupancy counts
+\cite{berend2013missing,benhamou2017concentration}. We use regular variation not
+only to evaluate the missing mass, but also to couple it to the observed teacher
+norm that drives finite-time optimization.
+
+\paragraph{Clipping and heavy-tailed optimization.}
+Rare activations can create large conditional feature amplitudes even when the
+population covariance is trace class. Gradient clipping is widely used to
+control such heavy-tailed or locally unstable updates, and prior theory gives
+high-probability convergence guarantees under heavy-tailed noise
+\cite{gorbunov2020clipping,zhang2020attention}. Our clipping rule has a more
+specific role: it enforces $\gamma_i\|X_i\|^2\le1$, making every replay update a
+Euclidean contraction. This permits a transparent comparison between
+coactivation, singleton curvature, and feature occupancy.
 
 \section{Sparse Power-Law Regression}
 
-For \(j\ge1\), let
-\[
+For $j\ge1$, let
+\begin{equation}
 X_j=q_jZ_jE_j,\qquad
 Z_j\sim{\rm Bernoulli}(p_j),\quad E_j\sim{\rm Rad},
-\]
-independently over coordinates and examples.  Then
-\(\lambda_j=\E X_j^2=p_jq_j^2\).  Labels are noiseless,
-\(Y=\langle\theta,X\rangle\), and the predictive energy of coordinate \(j\) is
-\(g_j=\lambda_j\theta_j^2\).  We assume
+\label{eq:model}
+\end{equation}
+independently over coordinates and examples. Then
+$\lambda_j=\E X_j^2=p_jq_j^2$. Labels are noiseless,
+$Y=\langle\theta,X\rangle$, and the predictive energy of coordinate $j$ is
+$g_j=\lambda_j\theta_j^2$. We assume
 \begin{equation}
-\begin{gathered}
-p_j\asymp j^{-s},\quad
-\lambda_j\asymp j^{-a},\quad
+\begin{aligned}
+p_j&\asymp j^{-s},\qquad
+\lambda_j\asymp j^{-a},\qquad
 g_j\asymp j^{-b},\\
-s>1,\qquad a\ge s,\qquad b>1.
-\end{gathered}
+s&>1,\qquad a\ge s,\qquad b>1.
+\end{aligned}
 \label{eq:powerlaws}
 \end{equation}
-Because \(s>1\), every example has finite support almost surely; the
-associated distinct-feature counts are an infinite-urn occupancy process
-\cite{karlin1967central}.  Population excess risk is diagonal for linear predictors:
+The condition $s>1$ makes every example finitely supported almost surely. The
+condition $a\ge s$ makes $q_j^2=\lambda_j/p_j\asymp j^{-(a-s)}$ nonincreasing,
+which permits a rank-independent stable base step. Population excess risk is
 \[
 \R(w)=\E_X[\langle w-\theta,X\rangle^2]
 =\sum_j\lambda_j(w_j-\theta_j)^2.
 \]
 For an arbitrary measurable predictor, we use
-\(\R(f)=\E_X[(f(X)-Y)^2]\).
+$\R(f)=\E_X[(f(X)-Y)^2]$.
 
-For the lower bound, teacher signs are independent Rademacher variables with
-fixed magnitudes \(|\theta_j|\).  Let \(D_n\) contain \(n\) unique examples.
+\subsection{Three frontiers and the correct intervention}
+
+Table~\ref{tab:regimes} summarizes the regimes implied by
+Eq.~\eqref{eq:frontiers-intro}. The same risk exponent $b-1$ applies to each
+frontier because the unresolved predictive tail obeys
+$\sum_{j>J}g_j\asymp J^{1-b}$. What differs is the resource that moves $J$.
+This is why fitting a single law in the product $nK$ can extrapolate correctly
+in the optimization regime and fail after coverage becomes active.
+
+\begin{table*}[t]
+\centering
+\caption{The three resource frontiers. The active frontier is the smallest of
+the three, and therefore determines both the leading risk and the useful next
+intervention.}
+\label{tab:regimes}
+\begin{tabular}{llll}
+\toprule
+Active bottleneck & Rank scale & Leading risk & Resource that improves it \\
+\midrule
+Capacity & $J_{\rm cap}=m$ & $m^{-(b-1)}$ & increase model width \\
+Optimization & $J_{\rm opt}=(\eta nK)^{1/a}$ & $(\eta nK)^{-(b-1)/a}$ & take more stable updates \\
+Coverage & $J_{\rm cov}=n^{1/s}$ & $n^{-(b-1)/s}$ & collect unique examples \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Phase boundaries and experimental design}
+
+The pairwise boundaries make the regime diagram directly testable. Capacity and
+coverage coincide when
+\begin{equation}
+m\asymp n^{1/s};
+\label{eq:cap-cov-boundary}
+\end{equation}
+capacity and optimization coincide when
+\begin{equation}
+\eta nK\asymp m^a;
+\label{eq:cap-opt-boundary}
+\end{equation}
+and optimization reaches coverage when
+\begin{equation}
+K\asymp\eta^{-1}n^{a/s-1}.
+\label{eq:opt-cov-boundary}
+\end{equation}
+These identities suggest three complementary sweeps. Varying $m$ at large $nK$
+isolates the capacity exponent; varying $K$ at fixed $n$ reveals optimization
+followed by a plateau; varying $n$ at large $K$ measures the coverage exponent.
+A convincing empirical test should therefore change one frontier while keeping
+the other two safely larger. The experiments below follow exactly this design.
+
+The exponent geometry also separates two notions that are easy to conflate.
+The target exponent $b$ determines how much error remains beyond a learned rank,
+and hence changes every risk slope. By contrast, the epoch at which reuse
+saturates depends only on the input-side ratio $a/s$: $a$ controls how weak the
+rare directions are, while $s$ controls how quickly unique examples discover
+them. This is why the stopping horizon can be estimated from inputs without
+labels, even though the height of the final error floor remains task dependent.
+
+Let $D_N$ contain $N$ unique examples and define the observed dictionary
+$\cS_N=\cup_{i\le N}{\rm supp}(X_i)$, its size $V_N=|\cS_N|$, the observed
+Euclidean teacher energy $A_N=\|\theta_{\cS_N}\|_2^2$, and the missing
+predictive energy $U_N=\sum_{j\notin\cS_N}g_j$. The following proposition makes
+explicit the three occupancy quantities used throughout the proof.
+
+\begin{proposition}[Occupancy calculus]
+\label{prop:occupancy}
+Assume exact profiles $p_j=c_pj^{-s}$, $\lambda_j=c_\lambda j^{-a}$,
+and $g_j=c_gj^{-b}$. Let
+\[
+\alpha=\frac{a-b+1}{s},\qquad
+\beta=\frac{b-1}{s}.
+\]
+If $a-s+1<b<a+1$, then $0<\alpha<1$ and
+\begin{align}
+\E V_N
+&\sim \Gamma(1-1/s)(c_pN)^{1/s},
+\label{eq:EV}\\
+\E A_N
+&\sim \frac{c_g}{c_\lambda}
+\frac{\Gamma(1-\alpha)}{a-b+1}(c_pN)^\alpha,
+\label{eq:EA}\\
+\E U_N
+&\sim \frac{c_g}{s}\Gamma(\beta)(c_pN)^{-\beta}.
+\label{eq:EU}
+\end{align}
+For two-sided power laws, the same quantities are respectively
+$\Theta(N^{1/s})$, $\Theta(N^\alpha)$, and $\Theta(N^{-\beta})$.
+\end{proposition}
+
+The identities follow by summing the inclusion probabilities
+$1-(1-p_j)^N$ or exclusion probabilities $(1-p_j)^N$ and applying a rescaled
+Riemann-sum argument. The source interval has a concrete meaning. Its lower
+endpoint makes the observed Euclidean norm integrable at the coverage scale;
+its upper endpoint ensures that this norm actually grows with $N$. Moreover,
+\begin{equation}
+\alpha+\beta=\frac as,
+\label{eq:alpha-beta}
+\end{equation}
+which is exactly the identity that later converts the finite-time optimization
+term into the saturation exponent $a/s-1$.
+
+For the information-theoretic lower bound, take independent Rademacher signs for
+the teacher coordinates while fixing their magnitudes.
 
 \begin{theorem}[Coverage floor]
 \label{thm:coverage}
-Under the random-sign prior, every measurable, possibly randomized predictor
+Every measurable, possibly randomized learner trained on $N$ unique examples
 satisfies
 \[
-\E_{\theta,D_n}\R(\widehat f)
-\ge
-\sum_{j\ge1}g_j(1-p_j)^n
-\asymp n^{-(b-1)/s}.
+\E_{\theta,D_N}\R(\widehat f)
+\ge \sum_{j\ge1}g_j(1-p_j)^N
+\asymp N^{-(b-1)/s}.
 \]
-For exact \(p_j=c_pj^{-s}\) and \(g_j=c_gj^{-b}\),
-\[
-\sum_jg_j(1-p_j)^n
-\sim
-\frac{c_g}{s}\Gamma\!\left(\frac{b-1}{s}\right)
-(c_pn)^{-(b-1)/s}.
-\]
+For exact profiles, the leading constant is the one in
+Eq.~\eqref{eq:EU}. The same rate is a minimax lower bound over deterministic
+choices of the teacher signs.
 \end{theorem}
 
-\paragraph{Proof idea.}
-If coordinate \(j\) is absent from every training input, no label depends on
-its teacher sign.  Conditional on all observed information, that sign remains
-symmetric.  Averaging squared test error over the hidden signs leaves at least
-the unseen predictive energy.  The asymptotic follows by splitting at
-\(j\asymp n^{1/s}\).  Thus no optimizer or number of epochs can beat the
-coverage term.  Since a Bayes lower bound is no larger than the corresponding
-minimax risk, the same rate is also a minimax lower bound over deterministic
-teacher-sign choices.
+\paragraph{Why the lower bound is algorithm independent.}
+If coordinate $j$ is absent from every training input, no observed label depends
+on its teacher sign. Conditional on the full dataset, all other teacher signs,
+and the learner's randomness, that sign remains symmetric. Averaging squared
+test error over the hidden signs leaves at least the unseen predictive energy.
+No amount of optimization, regularization, or replay can reduce this term.
 
 \section{Exact Replay Benchmark}
 
-In the one-hot benchmark, an example chooses \(J_i\sim(p_j)\) and
-\(X_i=E_iq_{J_i}e_{J_i}\).  A width-\(m\) model is trained from zero for \(K\)
-passes with step size \(\eta\).  If
-\(C_j\sim{\rm Binomial}(n,p_j)\), coordinate updates commute and give the
-following exact finite-sample expression.
+In the one-hot benchmark, example $i$ chooses $J_i\sim(p_j)$ and
+$X_i=E_iq_{J_i}e_{J_i}$. A width-$m$ model is trained from zero for $K$ passes
+with step $\eta$. Let $C_j\sim{\rm Binomial}(n,p_j)$ count unique occurrences of
+coordinate $j$. The update matrices now commute, so the complete finite-sample
+risk is explicit.
 
 \begin{proposition}[Exact one-hot replay]
 \label{prop:onehot}
-For \(0<\eta q_j^2<1\),
-\[
+If $0<\eta q_j^2<1$, then
+\begin{equation}
 \E_{D_n}\R
 =
 \sum_{j\le m}g_j
 [1-p_j+p_j(1-\eta q_j^2)^{2K}]^n
 +\sum_{j>m}g_j.
-\]
-Consequently,
+\label{eq:onehot-exact}
+\end{equation}
+Under Eq.~\eqref{eq:powerlaws},
 \begin{equation}
-\E\R
-\asymp
-J_\star^{1-b},\qquad
+\E\R\asymp J_\star^{1-b},\qquad
 J_\star=\min\{m,(\eta nK)^{1/a},n^{1/s}\}.
 \label{eq:threefrontier}
 \end{equation}
 Equivalently, the risk is within constants of
 \[
-m^{-(b-1)}
-+(\eta nK)^{-(b-1)/a}
-+n^{-(b-1)/s}.
+m^{-(b-1)}+(\eta nK)^{-(b-1)/a}+n^{-(b-1)/s}.
 \]
 \end{proposition}
 
-The survival probability of direction \(j\) is controlled by
+Indeed, each occurrence multiplies the residual coefficient by
+$1-\eta q_j^2$, and the binomial probability-generating function gives
+Eq.~\eqref{eq:onehot-exact}. The effective survival exponent is
 \[
-np_j\!\left[1-(1-\eta q_j^2)^{2K}\right]
-\asymp
-\min\{np_j,\eta nK\lambda_j\}.
+np_j\{1-(1-\eta q_j^2)^{2K}\}
+\asymp \min\{np_j,\eta nK\lambda_j\}.
 \]
-The first argument is coverage; the second is optimization.  Balancing them
-gives, for a sufficiently wide model,
+The first argument asks whether the feature appears; the second asks whether it
+has received enough optimization. Balancing the two at the coverage rank gives
 \begin{equation}
-K_{\rm sat}\asymp\eta^{-1}n^{a/s-1}.
-\label{eq:ksat}
+K_{\rm sat}\asymp\eta^{-1}n^{a/s-1},
+\label{eq:ksat-onehot}
 \end{equation}
-Related Zipfian one-hot saturation was analyzed by
-\citet{yan2026larger}; Proposition~\ref{prop:onehot} serves as our sharp
-benchmark for the multi-active problem.
+independent of the source exponent $b$. Proposition~\ref{prop:onehot} is a sharp
+benchmark, but its diagonal updates avoid the main difficulty in multi-active
+data.
 
 \section{Coactive Replay SGD}
 
-For \(N\) selected examples, let
-\[
-\cS_N=\bigcup_{i=1}^N{\rm supp}(X_i),\quad
-V_N=|\cS_N|,\quad
-A_N=\|\theta_{\cS_N}\|_2^2.
-\]
-A sparse dictionary stores all observed feature identities when \(V_N\le m\).
-This makes the selected problem exactly realizable.
-
-At each update, sample a row uniformly with replacement and use
+For $N$ selected examples, a sparse dictionary stores every identity in
+$\cS_N$ whenever $V_N\le m$. On the exponentially unlikely capacity-overflow
+event the algorithm returns zero; otherwise the selected problem is exactly
+realizable. At each update, sample a stored row uniformly with replacement and
+use
 \begin{equation}
 \begin{aligned}
 \gamma_i&=\min\left\{\eta,\frac{\rho}{\|X_i\|_2^2}\right\},\\
@@ -269,117 +423,236 @@ w_{t+1}&=w_t-\gamma_iX_i(X_i^\top w_t-Y_i).
 \end{aligned}
 \label{eq:clippedsgd}
 \end{equation}
-where \(0<\rho\le1\), with \(\rho/\|X_i\|_2^2=+\infty\) for a zero row, followed by the Polyak average
-\(\bar w_T=T^{-1}\sum_{t<T}w_t\).
-We assume \(\eta\sup_jq_j^2\le\rho\).  The algorithm trains on every sampled
-coactive row; it does not apply the singleton filter used in our preliminary
-achievability result.
+where $0<\rho\le1$, followed by
+$\bar w_T=T^{-1}\sum_{t<T}w_t$. We assume
+$\eta\sup_jq_j^2\le\rho$. Every sampled coactive row is used; singleton examples
+appear only in the analysis.
 
-To state the bound, define
-\[
-\alpha=\frac{a-b+1}{s},\qquad
-\beta=\frac{b-1}{s},
-\]
-and assume the source range
-\begin{equation}
-a-s+1<b<a+1.
-\label{eq:source}
-\end{equation}
-Then \(0<\alpha<1\) and \(\alpha+\beta=a/s\).
-
-\begin{theorem}[Coactive clipped replay]
-\label{thm:coactive}
-There is an observable support certificate, failing with probability at most
-\(N^{-r}+e^{-cm}\) for any fixed \(r>0\), such that whenever
-\(N\le c_mm^s\), certified clipped replay satisfies
+Let $C_{N,j}$ count examples whose support is exactly $\{j\}$. Because
+$\sum_jp_j<\infty$,
 \begin{equation}
 \begin{aligned}
-\E\R(\bar w_T)
-\le C\bigg[
-&\frac{N^\alpha}{\eta T}
-+\{\log(eN)\}^{a/s}N^{-\beta}\\
-&+N^{-r}+e^{-cm}
-\bigg].
+\pi_0&=\prod_{k\ge1}(1-p_k)>0,\\
+\Pr\{{\rm supp}(X)=\{j\}\}
+&=\frac{\pi_0p_j}{1-p_j}\asymp p_j.
 \end{aligned}
-\label{eq:coactivebound}
+\label{eq:singleton-probability}
 \end{equation}
-The expectation is over data and replay indices.  On certificate failure the
-certified version returns the zero predictor.
+Fix $0<\kappa\le\pi_0/2$ and define the label-free, distribution-aware anchor
+set and output
+\begin{equation}
+\cA_N=\{j:C_{N,j}\ge\kappa Np_j\},
+\qquad
+\widehat w_T=P_{\cA_N}\bar w_T.
+\label{eq:anchor}
+\end{equation}
+The mask is applied only at readout and never filters a training row.
+
+\begin{theorem}[Sharp coactive replay and plain output]
+\label{thm:coactive}
+Assume $a-s+1<b<a+1$ and $N\le c_mm^s$. Then example-norm-clipped,
+with-replacement replay satisfies
+\begin{equation}
+\E\R(\widehat w_T)
+\le C\left[
+\frac{N^\alpha}{\eta T}+N^{-\beta}+e^{-cm}
+\right].
+\label{eq:anchor-bound}
+\end{equation}
+The ordinary unmasked Polyak average, with no singleton-support abort or zero
+fallback other than capacity overflow, satisfies
+\begin{equation}
+\E\R(\bar w_T)
+\le C\left[
+\frac{N^\alpha}{\eta T}
++\{\log(eN)\}^{a/s}N^{-\beta}
++e^{-cm}
+\right].
+\label{eq:plain-bound}
+\end{equation}
+The expectation is over the unique dataset and replay indices.
 \end{theorem}
 
-\paragraph{Why coactivation does not break the rate.}
-The probability that a multi-active example is exactly singleton \(j\) is
-\[
-\nu_j=p_j\prod_{k\ne j}(1-p_k)\asymp p_j,
-\]
-because \(\sum_jp_j<\infty\).  With high probability, every
-\(j\le J_N\asymp(N/\log N)^{1/s}\) has \(\Omega(Np_j)\) singleton rows.
-These rows are not filtered; they merely certify curvature inside the full
-empirical objective.
+\subsection{Proof anatomy}
 
-Let \(\delta_t=w_t-\theta_{\cS_N}\).  Clipping ensures
-\(\gamma_i\|X_i\|^2\le1\), hence every coactive update contracts:
-\[
+The proof separates stability, empirical curvature, and occupancy. Let
+$\delta_t=w_t-\theta_{\cS_N}$. Since
+$\gamma_i\|X_i\|^2\le1$, every rank-one update contracts pathwise:
+\begin{equation}
 \|\delta_{t+1}\|^2
-\le
-\|\delta_t\|^2-\gamma_i(X_i^\top\delta_t)^2.
-\]
-Averaging over the next row and retaining only the nonnegative singleton
-contributions gives
+\le \|\delta_t\|^2-\gamma_i(X_i^\top\delta_t)^2.
+\label{eq:contraction}
+\end{equation}
+This is the point at which clipping resolves rare, high-norm coactive examples:
+they can slow an update but cannot increase the Euclidean error.
+
+A singleton-$j$ row is not clipped under the base-step assumption. Conditional
+on the fixed dataset, average Eq.~\eqref{eq:contraction} over the next replay
+index, retain only singleton contributions, and telescope. This gives the
+energy inequality
+\begin{equation}
+\frac{\eta}{N}\sum_{t<T}\E_{\rm sgd}
+\sum_j C_{N,j}q_j^2\delta_{t,j}^2
+\le A_N.
+\label{eq:energy}
+\end{equation}
+On $\cA_N$, the coefficient satisfies
+$C_{N,j}q_j^2/N\ge\kappa p_jq_j^2=\kappa\lambda_j$. Jensen's inequality for the
+Polyak average therefore converts Eq.~\eqref{eq:energy} into
 \[
-\E_t\|\delta_{t+1}\|^2
-\le
-\|\delta_t\|^2-c\eta
-\sum_{j\le J_N}\lambda_j\delta_{t,j}^2.
+\E_{\rm sgd}\sum_{j\in\cA_N}\lambda_j
+(\bar w_{T,j}-\theta_j)^2
+\le \frac{A_N}{\kappa\eta T}.
 \]
-Telescoping and averaging yield core risk
-\(A_N/(c\eta T)\); Euclidean contraction bounds the represented tail by
-\(\lambda_{J_N+1}A_N\).  Finally,
+For the masked coordinates, a Chernoff bound gives
+$\Pr(j\notin\cA_N)\le e^{-cNp_j}$, hence
 \[
-\E A_N\asymp N^\alpha,\quad
-\E V_N\asymp N^{1/s},\quad
-\E\!\sum_{j\notin\cS_N}g_j\asymp N^{-\beta}.
+\E\sum_{j\notin\cA_N}g_j
+\lesssim\sum_jj^{-b}e^{-cNj^{-s}}
+\asymp N^{-\beta}.
 \]
-Combining these occupancy laws proves
-Theorem~\ref{thm:coactive}.  Full proofs and sharp constants are in the
-supplement.
+Finally, Proposition~\ref{prop:occupancy} supplies
+$\E A_N\asymp N^\alpha$, proving Eq.~\eqref{eq:anchor-bound}.
+
+The plain output uses the same energy inequality on a simultaneous-coverage
+core
+$J_N\asymp(N/\log N)^{1/s}$. On the represented tail,
+pathwise contraction implies
+$\sum_{j>J_N}\lambda_j\bar\delta_j^2
+\le\lambda_{J_N+1}A_N$. Taking expectations gives
+\[
+\lambda_{J_N+1}\E A_N
+\asymp \{\log(eN)\}^{a/s}N^{-\beta},
+\]
+where Eq.~\eqref{eq:alpha-beta} is essential. A weighted occupancy-moment bound
+and H\"older's inequality control the rare datasets on which the core lacks
+singleton anchors. Thus no abort event is built into the plain algorithm. The
+supplement gives all constants, the moment lemma, and the capacity-overflow
+bound.
 
 \begin{corollary}[All-data saturation]
 \label{cor:alldata}
-With \(N=n\), \(T=nK\), and \(m\gtrsim n^{1/s}\),
+With $N=n$, $T=nK$, and $m\gtrsim n^{1/s}$,
 \[
-\E\R(\bar w_{nK})
-\lesssim
-\frac{n^{\alpha-1}}{\eta K}
-+\{\log(en)\}^{a/s}n^{-\beta}.
+\E\R(\widehat w_{nK})
+\lesssim \frac{n^{\alpha-1}}{\eta K}+n^{-\beta}.
 \]
-Therefore \(K=\wtO(\eta^{-1}n^{a/s-1})\) epochs suffice to reach the
-algorithm-independent coverage floor, up to logarithms.
+Consequently,
+\begin{equation}
+K_{\rm sat}=O(\eta^{-1}n^{a/s-1})
+\label{eq:ksat-sharp}
+\end{equation}
+epochs suffice to reach the information-theoretic coverage rate. The plain
+average obeys the same power law up to the logarithm in
+Eq.~\eqref{eq:plain-bound}.
 \end{corollary}
 
 \begin{corollary}[Full frontier]
 \label{cor:full}
-Given \(n,m,T\), select
+Given $n,m,T$, select
 \[
-N_\star\asymp
-\min\{n,m^s,(\eta T)^{s/a}\}
+N_\star\asymp\min\{n,m^s,(\eta T)^{s/a}\}
 \]
-unique examples and run certified clipped replay.  Then
-\[
+unique examples and run anchor-masked clipped replay. Then
+\begin{equation}
 \begin{aligned}
-\E\R(\bar w_T)
-\le\wtO\bigl(
-&m^{-(b-1)}
-+(\eta T)^{-(b-1)/a}\\
-&+n^{-(b-1)/s}
-\bigr).
+\E\R(\widehat w_T)=O\bigl(&m^{-(b-1)}
+ +(\eta T)^{-(b-1)/a}\\
+&+n^{-(b-1)/s}+e^{-cm}\bigr).
 \end{aligned}
-\]
+\label{eq:full-frontier-rate}
+\end{equation}
+The unmasked output attains the same exponents up to logarithms.
 \end{corollary}
 
-The progressive subset in Corollary~\ref{cor:full} is a conservative
-achievability construction, not a claim that discarding data is optimal.
-Empirically, using more unique data at fixed updates consistently helps.
+The progressive subset is a conservative achievability construction rather
+than a claim that discarding data is optimal. At fixed update compute, the
+experiments consistently favor more unique examples.
+
+\subsection{Budgeted Data Acquisition and Replay}
+
+The preceding corollaries treat unique examples and updates as independently
+specified resources. A more operational question is how to divide one budget
+between acquiring fresh examples and replaying the examples already available.
+Let one unique example cost $c_{\rm d}>0$, let one SGD update cost
+$c_{\rm u}>0$, and impose
+\begin{equation}
+ c_{\rm d}N+c_{\rm u}T\le B.
+ \label{eq:budget-constraint}
+\end{equation}
+
+\begin{corollary}[Budget allocation]
+\label{cor:budget}
+For a sufficiently small constant $c_0$, choose
+\begin{align}
+N_B&=\left\lfloor c_0\min\left\{
+ n,m^s,(\eta B/c_{\rm u})^{s/a},B/c_{\rm d}
+ \right\}\right\rfloor,\nonumber\\
+T_B&=\left\lfloor\frac{B-c_{\rm d}N_B}{c_{\rm u}}\right\rfloor.
+\label{eq:budget-schedule}
+\end{align}
+Then anchor-masked clipped replay satisfies
+\begin{align}
+\E\R(\widehat w_{T_B})=O\bigl(&m^{-(b-1)}+n^{-(b-1)/s}
+ +(\eta B/c_{\rm u})^{-(b-1)/a}\nonumber\\
+&+(B/c_{\rm d})^{-(b-1)/s}+e^{-cm}\bigr).
+\label{eq:budget-rate}
+\end{align}
+The unmasked output has the same power laws up to logarithms.
+\end{corollary}
+
+The derivation makes the resource tradeoff transparent. The constant $c_0$
+ensures $T_B\asymp B/c_{\rm u}$, and the choice of $N_B$ balances the replay
+term $N^\alpha/(\eta T)$ against the coverage term $N^{-\beta}$, using
+$\alpha+\beta=a/s$. Thus, when $n$ and $m$ do not bind and $a>s$,
+\begin{equation}
+ N_B\asymp(\eta B/c_{\rm u})^{s/a},\qquad
+ K_B=T_B/N_B\asymp B^{1-s/a}.
+ \label{eq:budget-interpretation}
+\end{equation}
+Only a sublinear number of new examples is required as the budget grows; most
+additional budget is eventually spent replaying them until optimization meets
+coverage. When $a=s$, the two scales are both linear and fresh data must retain
+a constant budget share. The schedule is independent of $b$: target smoothness
+changes how much error lies beyond a learned rank, whereas $a$ and $s$ determine
+where the resource frontiers cross. Equation~\eqref{eq:budget-rate} is a
+frontier-matched guarantee for this benchmark, not a universal claim that the
+same cost split is minimax for arbitrary representations or noisy tasks.
+
+\section{An Input-Only Replay Stopping Rule}
+
+Corollary~\ref{cor:alldata} implies that the useful number of epochs depends on
+$a$ and $s$, but not on $b$. This is not merely an exponent-level observation.
+For exact profiles,
+\begin{equation}
+q_j^2=\frac{\lambda_j}{p_j}
+=c_qp_j^{a/s-1},\qquad c_q=c_\lambda c_p^{-a/s}.
+\label{eq:q-vs-p}
+\end{equation}
+The coverage frontier consists of features with $p_j\asymp1/n$. Such a feature
+appears only $O(1)$ times per epoch and needs
+$K\eta q_j^2\asymp1$ to be optimized. Therefore
+\begin{equation}
+K_{\rm sat}\asymp\frac{1}{\eta q^2(p=1/n)}.
+\label{eq:ksat-input}
+\end{equation}
+
+This identity suggests a label-free plug-in estimator. For every feature that
+appears at least $r_{\min}$ times, estimate its activation frequency
+$\widehat p_j$ and its conditional second moment $\widehat q_j^2$. Fit
+\[
+\log\widehat q_j^2=\widehat c+\widehat r\log\widehat p_j
+\]
+and predict
+\begin{equation}
+\widehat K_{\rm sat}
+=\eta^{-1}\exp(-\widehat c)n^{\widehat r}.
+\label{eq:stopping-estimator}
+\end{equation}
+The theorem assumes known $p_j$ only for the sharp output mask; the stopping
+estimator itself uses observed inputs alone. A full plug-in theorem for unknown
+activation probabilities is left open, but the experiment below tests the
+finite-sample calibration directly.
 
 \begin{figure*}[t]
 \centering
@@ -387,62 +660,119 @@ Empirically, using more unique data at fixed updates consistently helps.
 \hfill
 \includegraphics[width=0.485\textwidth]{figures/scaling_collapse.pdf}
 \caption{\textbf{Optimization gives way to coverage.}
-Left: averaged risk decreases with epochs and plateaus at the independently
-computed unseen-feature floor (dashed), whose height moves with the number of
-unique examples.  Right: curves collapse after normalizing epochs by
-\(\eta n^{1-a/s}\) and risk by \(n^{(b-1)/s}\).  Default
-\((s,a,b)=(1.5,2,2)\); means over five seeds.}
+Left: averaged risk decreases with epochs and plateaus near the independently
+computed unseen-feature floor; increasing the number of unique examples lowers
+the plateau. Right: curves collapse after normalizing epochs by
+$\eta n^{1-a/s}$ and risk by $n^{(b-1)/s}$. Default
+$(s,a,b)=(1.5,2,2)$; means over five seeds.}
 \label{fig:main}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.485\textwidth]{figures/capacity_frontier.pdf}
+\hfill
+\includegraphics[width=0.425\textwidth]{figures/stopping_rule.pdf}
+\caption{\textbf{The third frontier and an input-only stopping rule.}
+Left: at large $n$ and $K$, risk follows the capacity tail $m^{-1}$ before
+flattening at the unique-data floor; the fitted small-width slope is $-0.991$.
+Right: the saturation epoch predicted from activation frequencies and
+conditional second moments tracks the measured crossing of $1.25$ times the
+coverage floor across three spectral regimes. Each point aggregates five
+seeds.}
+\label{fig:diagnostics}
 \end{figure*}
 
 \section{Experiments}
 
-We generate independent Bernoulli masks directly in sparse CSR form.  Unless
-noted otherwise,
-\[
-p_j=\frac{\mu}{\zeta(s)}j^{-s},\quad
-\lambda_j=j^{-a},\quad g_j=j^{-b},
-\]
-with \((s,a,b)=(1.5,2,2)\), expected active features \(\mu=1\),
-\(\eta=0.2\), and ambient dimension \(d=4096\) or \(8192\).  We add the
-analytic population tail beyond \(d\).  The primary protocol is
-with-replacement clipped replay with \(\rho=0.9\); all main sweeps use five
-seeds.  Code computes population risk exactly from the coefficient error.
+\subsection{Setup}
 
-\paragraph{Three-frontier transition.}
-Figure~\ref{fig:main} shows the optimization-limited decay followed by a
-unique-data floor.  At \(n=8192\), the early averaged-risk slope is
-\(-0.459\), close to the predicted \(-(b-1)/a=-0.5\).  At \(K=512\), the
-slope across dataset sizes is \(-0.6548\), versus the predicted
-\(-(b-1)/s=-0.6667\).  Fitting all 60 averaged-risk points to
+We generate the independent Bernoulli design exactly in sparse CSR form by
+first sampling each coordinate occupancy and then assigning its active rows.
+Unless noted otherwise,
 \[
-A(\eta nK)^{-(b-1)/a}+Bn^{-(b-1)/s}
+p_j=\frac{\mu}{\zeta(s)}j^{-s},\qquad
+\lambda_j=j^{-a},\qquad g_j=j^{-b},
 \]
-gives \(R^2=0.981\) and median relative error \(9.5\%\), without fitting either
-exponent.
+with $(s,a,b)=(1.5,2,2)$, expected active features $\mu=1$, $\eta=0.2$,
+clipping radius $\rho=0.9$, and ambient dimension $d=4096$ or $8192$. Risk in
+the simulated coordinates is computed exactly from the coefficient error and
+we add the analytic tail $\zeta(b,d+1)$. The primary protocol is clipped
+with-replacement replay. All main sweeps use five seeds. The original release
+contains 670 runs; the capacity and stopping diagnostics add 125 runs, for 795
+runs and 5,400 recorded risk checkpoints in total.
+
+\subsection{Optimization and coverage frontiers}
+
+Figure~\ref{fig:main} shows power-law optimization followed by a floor that
+moves only with unique data. At $n=8192$, the early averaged-risk slope is
+$-0.459$, close to the prediction $-(b-1)/a=-0.5$. At $K=512$, the slope across
+dataset sizes is $-0.6548$, versus $-(b-1)/s=-0.6667$. Fitting all 60 primary
+averaged-risk points to
+\begin{equation}
+A(\eta nK)^{-(b-1)/a}+Bn^{-(b-1)/s}
+\label{eq:two-term-fit}
+\end{equation}
+gives $R^2=0.981$ and median relative error $9.5\%$, without fitting either
+exponent. The normalized curves collapse around
+$\eta Kn^{1-a/s}\asymp1$, precisely the saturation scale in
+Eq.~\eqref{eq:ksat-sharp}.
+
+No experiment uses a singleton-support abort. The anchor mask is evaluated only
+as a conservative, label-free readout diagnostic; headline exponents and model
+comparisons use the ordinary unmasked output. In finite samples the plain output
+is consistently better because it retains features seen only in coactive rows,
+while Theorem~\ref{thm:coactive} guarantees it up to a logarithm. Thus the mask
+is a sharp-proof device rather than an empirical performance trick.
+
+\subsection{Capacity frontier}
+
+The original experiments varied $n$ and $K$ but did not directly isolate
+$J_{\rm cap}$. We therefore fix $n=32768$, $K=256$, and vary the representable
+rank $m\in\{64,128,\ldots,4096\}$. For $m\le256$, averaged risk has slope
+$-0.991$, while the exact omitted target tail has slope $-0.996$; both match the
+prediction $m^{-(b-1)}=m^{-1}$. Around $m\approx1024$, the capacity tail falls
+below the unique-data floor and further width gives little benefit. The left
+panel of Figure~\ref{fig:diagnostics} therefore exposes the third frontier that
+was implicit in the earlier scaling collapse.
+
+\subsection{Input-only stopping prediction}
+
+We use $r_{\min}=8$ in Eq.~\eqref{eq:stopping-estimator}. The measured stopping
+point is the first log-interpolated epoch at which the averaged risk is at most
+$1.25$ times the exact unseen-feature floor. We test
+$(a,s,b)=(2,1.5,2)$, $(2.4,1.5,2)$, and $(2.5,2,2.5)$ over six dataset sizes.
+The mean fitted exponents $\widehat r$ are respectively
+$0.349$, $0.629$, and $0.257$, compared with the true values
+$0.333$, $0.600$, and $0.250$. The median multiplicative errors in
+$\widehat K_{\rm sat}$ are $1.68$, $1.49$, and $1.55$. These errors include both
+estimation noise and the finite-grid definition of ``near the floor.'' The
+right panel of Figure~\ref{fig:diagnostics} shows that the estimator nevertheless
+tracks the change in replay horizon across data scales and spectral regimes.
+
+\subsection{Additional checks}
 
 \paragraph{Progressive compute scaling.}
-For total updates \(T\in[2^{12},2^{20}]\), we choose
-\(N=\lfloor(\eta T)^{s/a}\rfloor\), as in
-Corollary~\ref{cor:full}.  Figure~\ref{fig:progressive} gives slopes
-\(-0.502\) for the averaged iterate and \(-0.497\) for the last iterate,
-matching \(T^{-(b-1)/a}=T^{-1/2}\).
+For total updates $T\in[2^{12},2^{20}]$, we choose
+$N=\lfloor(\eta T)^{s/a}\rfloor$ as in Corollary~\ref{cor:full}. The fitted
+slopes are $-0.502$ for the averaged iterate and $-0.497$ for the last iterate,
+matching $T^{-(b-1)/a}=T^{-1/2}$.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/progressive_schedule.pdf}
 \caption{\textbf{Frontier-matched schedule.}
-Choosing \(N\asymp(\eta T)^{s/a}\) yields the predicted
-\(T^{-(b-1)/a}=T^{-1/2}\) compute law.}
+Choosing $N\asymp(\eta T)^{s/a}$ yields the predicted
+$T^{-(b-1)/a}=T^{-1/2}$ compute law.}
 \label{fig:progressive}
 \end{figure}
 
 \paragraph{Source exponents.}
-We vary \(b\) while holding \((a,s)=(2,1.5)\).  Table~\ref{tab:source}
-shows that the large-epoch data slope tracks \(-(b-1)/s\), including targets
-rougher and smoother than the default.  The roughest case \(b=1.4\) lies just
-outside the Euclidean-source condition in Eq.~\eqref{eq:source} and is therefore
-an empirical robustness test.
+Holding $(a,s)=(2,1.5)$ fixed, the large-epoch data slope tracks
+$-(b-1)/s$ for targets both rougher and smoother than the default
+(Table~\ref{tab:source}). The $b=1.4$ case lies just outside the source range in
+Theorem~\ref{thm:coactive} and is therefore a robustness test rather than a
+covered theorem setting.
 
 \begin{table}[t]
 \centering
@@ -450,7 +780,7 @@ an empirical robustness test.
 \label{tab:source}
 \begin{tabular}{ccc}
 \toprule
-\(b\) & predicted & measured \\
+$b$ & predicted & measured \\
 \midrule
 1.4 & -0.267 & -0.263 \\
 1.7 & -0.467 & -0.458 \\
@@ -461,49 +791,73 @@ an empirical robustness test.
 \end{table}
 
 \paragraph{Unique data at fixed compute.}
-At \(T=2^{18}\) updates, increasing unique examples from \(256\) to
-\(32{,}768\) reduces last-iterate risk by a factor of \(12.8\), despite
-holding total sample updates fixed.  This directly falsifies any law depending
-on \(nK\) alone once coverage is active.
+At $T=2^{18}$ updates, increasing unique examples from $256$ to $32768$ lowers
+last-iterate risk by a factor of $12.8$, even though total sample updates are
+unchanged. This directly rejects a law depending on $nK$ alone after coverage
+becomes active.
 
 \paragraph{Why clipping matters.}
-Across expected coactivation \(\mu\in[0.35,2.35]\), clipped cyclic,
-reshuffled, and with-replacement replay all approach the same floor.  Under
-the aggressive setting \((\mu,\eta)=(2.25,1.2)\), however, unclipped
-reshuffling reaches mean risk \(1.16\times10^{85}\) by four epochs, while
-clipped replay remains stable and reaches \(7.08\times10^{-3}\), near its
-\(6.18\times10^{-3}\) coverage floor.  This supports the contraction mechanism
-used in Theorem~\ref{thm:coactive}.
+Across expected coactivation $\mu\in[0.35,2.35]$, clipped cyclic, reshuffled,
+and with-replacement replay approach the same floor. Under the aggressive
+setting $(\mu,\eta)=(2.25,1.2)$, unclipped reshuffling reaches mean risk
+$1.16\times10^{85}$ by four epochs and later overflows. Clipped replay remains
+stable and reaches $7.08\times10^{-3}$, near its
+$6.18\times10^{-3}$ coverage floor. This stress test directly supports the
+pathwise mechanism in Eq.~\eqref{eq:contraction}.
+
+
+\paragraph{Local frontier diagnostic.}
+Let $L=L_m+L_T+L_N$ denote the three terms in the additive law, with exponents
+$\delta=b-1$, $\gamma=(b-1)/a$, and $\beta=(b-1)/s$. Their risk shares
+\[
+\omega_m=\frac{L_m}{L},\qquad
+\omega_T=\frac{L_T}{L},\qquad
+\omega_N=\frac{L_N}{L}
+\]
+satisfy $\omega_m+\omega_T+\omega_N=1$. Equivalently, they are the normalized
+logarithmic elasticities $-\partial_{\log m}\log L/\delta$,
+$-\partial_{\log T}\log L/\gamma$, and
+$-\partial_{\log N}\log L/\beta$ (proof in the supplement). The largest
+weight identifies the active bottleneck; $\omega_T\asymp\omega_N$ recovers
+$K\asymp\eta^{-1}N^{a/s-1}$. Measured slopes probe all three corners:
+$-0.991$ versus $-1$ for width, $-0.459$ versus $-1/2$ for updates, and
+$-0.655$ versus $-2/3$ for unique data. Local finite differences therefore
+indicate which resource to expand next.
 
 \section{Discussion and Limitations}
 
-The central distinction is between \emph{seeing} a rare feature and
-\emph{optimizing} its coefficient.  Repetition addresses only the latter.
-The predicted stopping epoch depends on the input exponents \(a,s\), not on
-the source exponent \(b\); in principle it can be estimated from unlabeled
-feature frequencies and second moments.
+\paragraph{Interpretation of the stopping rule.}
+The theorem predicts when optimization reaches the unique-data frontier, not
+the exact validation optimum in every noisy application. Label noise can create
+an earlier variance- or overfitting-limited optimum, so the coverage horizon is
+best viewed as an upper limit on useful unregularized reuse.
 
-Our theorem deliberately isolates this mechanism.  It assumes coordinate-
-addressable sparse features, noiseless realizable labels on the selected
-dictionary, a source range in which the observed Euclidean teacher norm is
-integrable, clipping, and Polyak averaging.  The logarithm comes from requiring
-simultaneous singleton coverage of a spectral core.  The unguarded last
-iterate and random reshuffling follow the same law empirically, but proving
-their sharp pre-saturation rate remains open.  Extending the result to noisy
-labels, fixed random sketches, and learned nonlinear features is important
-future work.
+\paragraph{Known versus estimated frequencies.}
+The sharp mask uses population $p_j$ values; a plug-in mask needs uniform
+small-count control. The plain output needs neither a mask nor an abort event,
+at the cost of the logarithm in our present proof.
+
+\paragraph{Representation and algorithmic scope.}
+The theorem assumes independent addressable sparse coordinates, clipped
+with-replacement replay, averaging, noiseless labels, and
+$a-s+1<b<a+1$. Fixed or learned features, cyclic replay, reshuffling, and last
+iterates require additional analysis. Progressive subsampling is an
+achievability construction, not an optimality claim.
+
+\paragraph{Practical implication.}
+Input occupancy and conditional second moments indicate when to redirect
+resources from replay to unique data or model capacity.
 
 \section{Conclusion}
 
-Sparse data impose a resource that total updates do not measure: unique
-feature coverage.  We derived its unavoidable error floor, characterized its
-interaction with model capacity and optimization time, and proved that a
-stable coactive replay method reaches it at the predicted epoch scale.
-The practical implication is simple: repeat data while optimization is the
-active frontier; once the coverage frontier is reached, another unique
-example is asymptotically more valuable than another epoch.
+Sparse data impose a resource missing from total-update counts: unique feature
+coverage. We derive its unavoidable floor, characterize its interaction with
+capacity and optimization, and prove stable coactive replay reaches it at the
+predicted epoch scale. Width sweeps and an input-only estimator validate all
+three frontiers. Replay while optimization dominates; after coverage takes over,
+spend on unique data or model capacity.
 
 \bibliography{references}
-\bibliographystyle{../AAAI_AuthorKit27/aaai2027}
+% aaai2027.sty selects the required aaai2027 bibliography style.
 
 \end{document}

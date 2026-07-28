@@ -6,6 +6,13 @@ on:
       - agent/expand-aaai-paper
     paths:
       - ".agent_expand/EXPORT_TRIGGER"
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: read
